@@ -39,5 +39,11 @@ export const env: Env = parsed.data;
 export const isProd = env.NODE_ENV === 'production';
 export const isTest = env.NODE_ENV === 'test';
 
-/** Allowed CORS origins (comma-separated list supported). */
-export const corsOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim());
+/**
+ * Allowed CORS origins (comma-separated list supported). Trailing slashes are
+ * stripped because browsers send the `Origin` header without one — a stray
+ * slash in CORS_ORIGIN would otherwise fail every cross-origin request.
+ */
+export const corsOrigins = env.CORS_ORIGIN.split(',')
+  .map((o) => o.trim().replace(/\/+$/, ''))
+  .filter(Boolean);

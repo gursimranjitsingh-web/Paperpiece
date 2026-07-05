@@ -3,7 +3,10 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 # Install workspace deps using only the manifests first (better layer caching).
-COPY package.json package-lock.json* turbo.json tsconfig.base.json ./
+# The root lockfile is intentionally omitted: it references workspaces (apps/web)
+# that aren't copied into this image, which would break a strict install. npm
+# resolves from the copied manifests instead.
+COPY package.json turbo.json tsconfig.base.json ./
 COPY apps/server/package.json apps/server/
 COPY packages/shared/package.json packages/shared/
 COPY packages/game-engine/package.json packages/game-engine/

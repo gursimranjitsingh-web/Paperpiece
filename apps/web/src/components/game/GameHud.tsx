@@ -1,0 +1,117 @@
+'use client';
+
+import { AnimatePresence, motion } from 'framer-motion';
+import { PowerUpType } from '@paperpiece/shared';
+import { MuteButton } from '@/components/MuteButton';
+import { gameBuffer } from '@/lib/gameBuffer';
+import { useGameStore } from '@/stores/gameStore';
+import { useRoomStore } from '@/stores/roomStore';
+
+const POWERUP_META: Record<PowerUpType, { icon: string; label: string; color: string }> = {
+  [PowerUpType.Shield]: { icon: '🛡️', label: 'Shield', color: '#3a86ff' },
+  [PowerUpType.SpeedBoost]: { icon: '⚡', label: 'Speed', color: '#ffd166' },
+  [PowerUpType.Freeze]: { icon: '❄️', label: 'Freeze', color: '#9bf6ff' },
+  [PowerUpType.ShrinkTerritory]: { icon: '✂️', label: 'Shrink', color: '#ef476f' },
+};
+
+/** Formats seconds as m:ss, or ∞ when the match is untimed. */
+function formatTime(sec: number | null): string {
+  if (sec === null) return '∞';
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+/** In-match overlay: leaderboard, your stats, timer, ping, kill feed. */
+export function GameHud({ playerId }: { playerId: string }) {
+  const leaderboard = useGameStore((s) => s.leaderboard);
+  const me = useGameStore((s) => s.me);
+  const timeRemaining = useGameStore((s) => s.timeRemaining);
+  const aliveCount = useGameStore((s) => s.aliveCount);
+  const killFeed = useGameStore((s) => s.killFeed);
+  const roomCode = useRoomStore((s) => s.room?.roomCode);
+  const pingMs = useRoomStore((s) => s.pingMs);
+  useGameStore((s) => s.frame); // re-read active power-ups each tick
+  const myPowers = gameBuffer.players.get(playerId)?.activePowerUps ?? [];
+
+  return (
+    <>
+      {/* Top-left: room + timer + alive */}
+      <div className="pointer-events-none absolute left-4 top-4 flex flex-col gap-2">
+        <div className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm backdrop-blur">
+          <span className="font-mono font-bold tracking-widest text-[var(--color-accent)]">{roomCode}</span>
+          <span className="mx-2 text-[var(--color-ink-soft)]">·</span>
+          <span className="tabular-nums">{formatTime(timeRemaining)}</span>
+          <span className="mx-2 text-[var(--color-ink-soft)]">·</span>
+          <span className="text-[var(--color-ink-soft)]">{aliveCount} alive</span>
+          <span className="mx-2 text-[var(--color-ink-soft)]">·</span>
+          <span className="text-[var(--color-ink-soft)]">{pingMs ?? '—'}ms</span>
+        </div>
+        {me && (
+          <div className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm backdrop-blur">
+            You · <span className="font-bold text-[var(--color-accent)]">{me.territoryPercent}%</span> ·{' '}
+            {me.kills} kills · rank #{me.rank}
+          </div>
+        )}
+        {myPowers.length > 0 && (
+          <div className="flex gap-1.5">
+            {myPowers.map((t) => (
+              <span
+                key={t}
+                title={POWERUP_META[t].label}
+                className="rounded-lg border bg-black/40 px-2 py-1 text-sm backdrop-blur"
+                style={{ borderColor: `${POWERUP_META[t].color}66` }}
+              >
+                {POWERUP_META[t].icon}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Top-right: leaderboard */}
+      <div className="pointer-events-none absolute right-4 top-4 w-56 rounded-xl border border-white/10 bg-black/40 p-3 text-sm backdrop-blur">
+        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--color-ink-soft)]">
+          Leaderboard
+        </p>
+        <ol className="flex flex-col gap-1">
+          {leaderboard.slice(0, 8).map((e) => (
+            <li
+              key={e.playerId}
+              className={`flex items-center gap-2 rounded-md px-1 py-0.5 ${
+                e.playerId === playerId ? 'bg-white/10' : ''
+              }`}
+            >
+              <span className="w-4 text-right text-[var(--color-ink-soft)]">{e.rank}</span>
+              <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: e.color }} />
+              <span className="flex-1 truncate">{e.username}</span>
+              <span className="tabular-nums font-semibold">{e.territoryPercent}%</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      {/* Bottom-right: mute */}
+      <div className="pointer-events-auto absolute bottom-4 right-4">
+        <MuteButton />
+      </div>
+
+      {/* Top-center: kill feed */}
+      <div className="pointer-events-none absolute left-1/2 top-4 flex w-72 -translate-x-1/2 flex-col items-center gap-1">
+        <AnimatePresence initial={false}>
+          {killFeed.map((k) => (
+            <motion.div
+              key={k.id}
+              initial={{ opacity: 0, x: -16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0 }}
+              className="rounded-lg border border-white/10 bg-black/40 px-3 py-1.5 text-xs text-[var(--color-ink-soft)] backdrop-blur"
+            >
+              {k.text}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+    </>
+  );
+}

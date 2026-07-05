@@ -1,0 +1,40 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# build outputs
+dist/
+.next/
+out/
+build/
+*.tsbuildinfo
+
+# turbo
+.turbo/
+
+# testing
+coverage/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# os
+.DS_Store
+Thumbs.db
+
+# editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# misc
+*.pem

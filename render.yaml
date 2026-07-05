@@ -1,0 +1,22 @@
+# Render.com Blueprint for the Paperpiece game server (persistent Socket.IO).
+# Deploy: push this repo, then in Render → "New +" → "Blueprint" → pick this repo.
+# Set the secret env vars (MONGODB_URI, REDIS_URL, CORS_ORIGIN) in the dashboard.
+services:
+  - type: web
+    name: paperpiece-server
+    runtime: docker
+    dockerfilePath: ./infra/docker/server.Dockerfile
+    dockerContext: .
+    plan: free # bump to "starter" for always-on (free tier sleeps when idle)
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render injects PORT automatically; the server binds to it.
+      - key: MONGODB_URI
+        sync: false # set in dashboard (your Atlas SRV string)
+      - key: REDIS_URL
+        sync: false # set in dashboard (e.g. an Upstash redis:// URL) — optional
+      - key: CORS_ORIGIN
+        sync: false # set to your Vercel URL, e.g. https://paperpiece.vercel.app

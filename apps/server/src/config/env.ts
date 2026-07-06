@@ -23,6 +23,9 @@ const EnvSchema = z.object({
   MONGODB_URI: z.string().default('mongodb://localhost:27017/paperpiece'),
   REDIS_URL: z.string().optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+  /** When set, the server also serves the static web build from this dir
+   *  (single-origin mode for local hosting via one tunnel). */
+  STATIC_DIR: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

@@ -11,7 +11,6 @@ import { useGame } from '@/hooks/useGame';
 import { useGameStore } from '@/stores/gameStore';
 import { useRoomStore } from '@/stores/roomStore';
 import { gameBuffer } from '@/lib/gameBuffer';
-import { replay } from '@/lib/replay';
 import { getSocket } from '@/lib/socket';
 import { identityAuth } from '@/stores/identityStore';
 import { GameHud } from './GameHud';
@@ -132,26 +131,16 @@ function ResultOverlay() {
           ))}
         </ol>
 
-        <div className="mt-6 flex gap-3">
-          {replay.available && (
-            <button
-              onClick={() => router.push('/replay')}
-              className="flex-1 rounded-xl border border-white/15 bg-white/5 px-6 py-3 font-semibold transition hover:bg-white/10"
-            >
-              ▶ Watch replay
-            </button>
-          )}
-          <button
-            onClick={() => {
-              reset();
-              gameBuffer.reset();
-              router.push('/lobby');
-            }}
-            className="flex-1 rounded-xl bg-[var(--color-accent)] px-6 py-3 font-semibold text-[var(--color-canvas)] transition hover:brightness-110"
-          >
-            Return to lobby
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            reset();
+            gameBuffer.reset();
+            router.push('/lobby');
+          }}
+          className="mt-6 w-full rounded-xl bg-[var(--color-accent)] px-6 py-3 font-semibold text-[var(--color-canvas)] transition hover:brightness-110"
+        >
+          Return to lobby
+        </button>
       </div>
     </motion.div>
   );

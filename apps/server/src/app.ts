@@ -3,7 +3,7 @@ import express, { type Application, type NextFunction, type Request, type Respon
 import { rateLimit } from 'express-rate-limit';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
-import { corsOrigins } from './config/env.js';
+import { corsOrigins, env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { healthRouter } from './routes/health.js';
 import { roomsRouter } from './routes/rooms.js';
@@ -19,7 +19,16 @@ export function createApp(): Application {
   app.set('trust proxy', 1);
 
   app.disable('x-powered-by');
-  app.use(helmet());
+  // When also serving the web app (single-origin local mode), relax CSP/CORP so
+  // the Next bundle, inline bootstrap, and external avatars load. The API-only
+  // deploy keeps helmet's stricter defaults.
+  app.use(
+    helmet(
+      env.STATIC_DIR
+        ? { contentSecurityPolicy: false, crossOriginEmbedderPolicy: false, crossOriginResourcePolicy: false }
+        : undefined,
+    ),
+  );
   app.use(cors({ origin: corsOrigins, credentials: true }));
   app.use(express.json({ limit: '64kb' }));
   app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === '/health' } }));
@@ -35,7 +44,14 @@ export function createApp(): Application {
   });
   app.use('/api', readLimiter, statsRouter);
   app.use('/api', readLimiter, roomsRouter);
-  app.get('/', (_req, res) => res.json({ name: 'paperpiece-server', status: 'running' }));
+
+  if (env.STATIC_DIR) {
+    // Single-origin mode: serve the static web build (each route is a prebuilt
+    // .html). Client uses same-origin, so no CORS and one tunnel suffices.
+    app.use(express.static(env.STATIC_DIR, { extensions: ['html'], index: 'index.html' }));
+  } else {
+    app.get('/', (_req, res) => res.json({ name: 'paperpiece-server', status: 'running' }));
+  }
 
   // 404
   app.use((_req, res) => res.status(404).json({ error: 'Not found' }));

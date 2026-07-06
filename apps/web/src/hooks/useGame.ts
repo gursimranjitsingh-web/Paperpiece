@@ -13,7 +13,6 @@ import { gameBuffer } from '@/lib/gameBuffer';
 import { fx } from '@/lib/fx';
 import { sound } from '@/lib/sound';
 import { spectator } from '@/lib/spectator';
-import { replay } from '@/lib/replay';
 import { useGameStore } from '@/stores/gameStore';
 import { identityAuth, useIdentityStore } from '@/stores/identityStore';
 import { useRoomStore } from '@/stores/roomStore';
@@ -80,9 +79,7 @@ export function useGame() {
         sound.stopCountdown(); // ensure no countdown beep bleeds into the match
         sound.play('start');
         sound.startMusic();
-        replay.start();
       }
-      replay.recordSnapshot(snap);
       updateHud({
         tick: snap.tick,
         leaderboard: snap.leaderboard,
@@ -93,7 +90,6 @@ export function useGame() {
     let prevPowerCount = 0;
     const onDelta = (delta: GameStateDelta): void => {
       gameBuffer.applyDelta(delta);
-      replay.recordDelta(delta);
       // Detect the local player picking up a power-up (active count grew).
       const mine = gameBuffer.players.get(id.playerId)?.activePowerUps.length ?? 0;
       if (mine > prevPowerCount) sound.play('powerup');
@@ -129,7 +125,6 @@ export function useGame() {
     };
     const onEnded = (result: MatchResult): void => {
       useGameStore.getState().setResult(result);
-      replay.stop();
       sound.stopMusic();
       sound.play('win');
     };

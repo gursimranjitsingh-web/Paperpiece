@@ -12,11 +12,11 @@ export const SERVER_TICK_MS = 1000 / SERVER_TICK_RATE;
 export const RENDER_FPS = 60 as const;
 
 /** Supported square map sizes (cells per side). */
-export const MAP_SIZES = [100, 200, 500] as const;
+export const MAP_SIZES = [50, 75, 100, 150, 200, 300, 500] as const;
 export type MapSize = (typeof MAP_SIZES)[number];
 
 /** Side length of the starting territory square each player is granted. */
-export const SPAWN_TERRITORY_SIZES = [5, 8] as const;
+export const SPAWN_TERRITORY_SIZES = [3, 4, 5, 6, 8, 10] as const;
 export type SpawnTerritorySize = (typeof SPAWN_TERRITORY_SIZES)[number];
 
 /** Room code format: 6 characters, uppercase letters + digits (no ambiguous chars). */

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { MAP_SIZES, MapTheme, SPAWN_TERRITORY_SIZES, type RoomSettings } from '@paperpiece/shared';
 import { BOARD_THEMES } from '@/lib/theme';
 
@@ -9,9 +10,36 @@ interface Props {
   onChange: (patch: Partial<RoomSettings>) => void;
 }
 
-/** Host-configurable match settings. Read-only for non-hosts. */
+/**
+ * Host-configurable match settings. Read-only for non-hosts.
+ *
+ * Edits update local state instantly (responsive sliders) but the network
+ * `onChange` is DEBOUNCED (~300ms) and coalesced, so dragging a slider fires one
+ * update instead of dozens — avoiding the server's anti-spam rate limit.
+ */
 export function SettingsPanel({ settings, isHost, onChange }: Props) {
   const disabled = !isHost;
+  const [local, setLocal] = useState<RoomSettings>(settings);
+  const pending = useRef<Partial<RoomSettings>>({});
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Adopt server-pushed settings, but not while we have an unsent local edit
+  // (avoids the slider snapping back mid-drag).
+  useEffect(() => {
+    if (Object.keys(pending.current).length === 0) setLocal(settings);
+  }, [settings]);
+
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  const set = (patch: Partial<RoomSettings>): void => {
+    setLocal((l) => ({ ...l, ...patch }));
+    pending.current = { ...pending.current, ...patch };
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      onChange(pending.current);
+      pending.current = {};
+    }, 300);
+  };
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
@@ -23,8 +51,8 @@ export function SettingsPanel({ settings, isHost, onChange }: Props) {
         <Field label="Map size">
           <Select
             disabled={disabled}
-            value={settings.mapSize}
-            onChange={(v) => onChange({ mapSize: Number(v) as RoomSettings['mapSize'] })}
+            value={local.mapSize}
+            onChange={(v) => set({ mapSize: Number(v) as RoomSettings['mapSize'] })}
             options={MAP_SIZES.map((s) => ({ value: s, label: `${s} × ${s}` }))}
           />
         </Field>
@@ -32,58 +60,30 @@ export function SettingsPanel({ settings, isHost, onChange }: Props) {
         <Field label="Starting area">
           <Select
             disabled={disabled}
-            value={settings.spawnTerritorySize}
-            onChange={(v) =>
-              onChange({ spawnTerritorySize: Number(v) as RoomSettings['spawnTerritorySize'] })
-            }
+            value={local.spawnTerritorySize}
+            onChange={(v) => set({ spawnTerritorySize: Number(v) as RoomSettings['spawnTerritorySize'] })}
             options={SPAWN_TERRITORY_SIZES.map((s) => ({ value: s, label: `${s} × ${s}` }))}
           />
         </Field>
 
-        <Field label={`Player limit — ${settings.playerLimit}`}>
-          <Range
-            disabled={disabled}
-            min={1}
-            max={50}
-            value={settings.playerLimit}
-            onChange={(v) => onChange({ playerLimit: v })}
-          />
+        <Field label={`Player limit — ${local.playerLimit}`}>
+          <Range disabled={disabled} min={1} max={50} value={local.playerLimit} onChange={(v) => set({ playerLimit: v })} />
         </Field>
 
-        <Field label={`Speed — ${settings.speedMultiplier.toFixed(1)}×`}>
-          <Range
-            disabled={disabled}
-            min={0.5}
-            max={3}
-            step={0.1}
-            value={settings.speedMultiplier}
-            onChange={(v) => onChange({ speedMultiplier: v })}
-          />
+        <Field label={`Speed — ${local.speedMultiplier.toFixed(1)}×`}>
+          <Range disabled={disabled} min={0.5} max={3} step={0.1} value={local.speedMultiplier} onChange={(v) => set({ speedMultiplier: v })} />
         </Field>
 
-        <Field label={`Respawn — ${settings.respawnSeconds === 0 ? 'spectate' : `${settings.respawnSeconds}s`}`}>
-          <Range
-            disabled={disabled}
-            min={0}
-            max={15}
-            value={settings.respawnSeconds}
-            onChange={(v) => onChange({ respawnSeconds: v })}
-          />
+        <Field label={`Respawn — ${local.respawnSeconds === 0 ? 'spectate' : `${local.respawnSeconds}s`}`}>
+          <Range disabled={disabled} min={0} max={15} value={local.respawnSeconds} onChange={(v) => set({ respawnSeconds: v })} />
         </Field>
 
         <Field
           label={`Duration — ${
-            settings.matchDurationSeconds === 0 ? 'last standing' : `${Math.round(settings.matchDurationSeconds / 60)}m`
+            local.matchDurationSeconds === 0 ? 'last standing' : `${Math.round(local.matchDurationSeconds / 60)}m`
           }`}
         >
-          <Range
-            disabled={disabled}
-            min={0}
-            max={900}
-            step={30}
-            value={settings.matchDurationSeconds}
-            onChange={(v) => onChange({ matchDurationSeconds: v })}
-          />
+          <Range disabled={disabled} min={0} max={900} step={30} value={local.matchDurationSeconds} onChange={(v) => set({ matchDurationSeconds: v })} />
         </Field>
       </div>
 
@@ -92,12 +92,12 @@ export function SettingsPanel({ settings, isHost, onChange }: Props) {
       <div className="flex flex-wrap gap-2">
         {Object.values(MapTheme).map((t) => {
           const theme = BOARD_THEMES[t];
-          const active = settings.theme === t;
+          const active = local.theme === t;
           return (
             <button
               key={t}
               disabled={disabled}
-              onClick={() => onChange({ theme: t })}
+              onClick={() => set({ theme: t })}
               className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-60 ${
                 active ? 'border-[var(--color-accent)]/50 bg-white/10' : 'border-white/10 bg-black/30'
               }`}
@@ -113,36 +113,11 @@ export function SettingsPanel({ settings, isHost, onChange }: Props) {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <Toggle
-          disabled={disabled}
-          label="Mouse control"
-          value={settings.mouseControl}
-          onChange={(v) => onChange({ mouseControl: v })}
-        />
-        <Toggle
-          disabled={disabled}
-          label="Friendly fire"
-          value={settings.friendlyFire}
-          onChange={(v) => onChange({ friendlyFire: v })}
-        />
-        <Toggle
-          disabled={disabled}
-          label="Fog of war"
-          value={settings.fogEnabled}
-          onChange={(v) => onChange({ fogEnabled: v })}
-        />
-        <Toggle
-          disabled={disabled}
-          label="Fill with bots"
-          value={settings.fillWithBots}
-          onChange={(v) => onChange({ fillWithBots: v })}
-        />
-        <Toggle
-          disabled={disabled}
-          label="Public"
-          value={settings.isPublic}
-          onChange={(v) => onChange({ isPublic: v })}
-        />
+        <Toggle disabled={disabled} label="Mouse control" value={local.mouseControl} onChange={(v) => set({ mouseControl: v })} />
+        <Toggle disabled={disabled} label="Friendly fire" value={local.friendlyFire} onChange={(v) => set({ friendlyFire: v })} />
+        <Toggle disabled={disabled} label="Fog of war" value={local.fogEnabled} onChange={(v) => set({ fogEnabled: v })} />
+        <Toggle disabled={disabled} label="Fill with bots" value={local.fillWithBots} onChange={(v) => set({ fillWithBots: v })} />
+        <Toggle disabled={disabled} label="Public" value={local.isPublic} onChange={(v) => set({ isPublic: v })} />
       </div>
     </div>
   );

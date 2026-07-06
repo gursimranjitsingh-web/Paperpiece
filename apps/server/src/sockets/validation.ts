@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   AVATAR_MAX_LEN,
   GameMode,
+  MAP_SIZES,
   MapTheme,
   MAX_PLAYERS,
   MAX_USERNAME_LENGTH,
@@ -9,6 +10,7 @@ import {
   PlayerPattern,
   PlayerShape,
   ROOM_CODE_LENGTH,
+  SPAWN_TERRITORY_SIZES,
 } from '@paperpiece/shared';
 
 /** Accept a remote http(s) URL or a small base64 image data-URL. */
@@ -28,9 +30,15 @@ const avatarString = z
 
 const settingsPatch = z
   .object({
-    mapSize: z.union([z.literal(100), z.literal(200), z.literal(500)]),
+    // Validate membership against the allowed lists (sanitizeSettings re-checks
+    // and narrows the type server-side, so a plain number here is fine).
+    mapSize: z
+      .number()
+      .refine((v) => (MAP_SIZES as readonly number[]).includes(v), 'invalid map size'),
     playerLimit: z.number().int().min(MIN_PLAYERS).max(MAX_PLAYERS),
-    spawnTerritorySize: z.union([z.literal(5), z.literal(8)]),
+    spawnTerritorySize: z
+      .number()
+      .refine((v) => (SPAWN_TERRITORY_SIZES as readonly number[]).includes(v), 'invalid spawn size'),
     respawnSeconds: z.number().int().min(0).max(30),
     matchDurationSeconds: z.number().int().min(0).max(3600),
     speedMultiplier: z.number().min(0.5).max(3),

@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import { MAX_USERNAME_LENGTH, PlayerShape, ROOM_CODE_LENGTH } from '@paperpiece/shared';
+import { MAX_USERNAME_LENGTH, ROOM_CODE_LENGTH } from '@paperpiece/shared';
 import { api } from '@/lib/api';
 import { AVATARS } from '@/lib/avatars';
 import { Avatar } from '@/components/Avatar';
@@ -19,15 +19,15 @@ interface Props {
 
 /** Pre-room screen: pick a nickname, then create or join by code. */
 export function EntryScreen({ defaultJoin, initialCode, onCreate, onJoin }: Props) {
-  const { username, setUsername, hydrated, avatar, setAvatar, shape, setShape } = useIdentityStore();
+  const { username, setUsername, avatar, setAvatar } = useIdentityStore();
   const [name, setName] = useState('');
   const [code, setCode] = useState((initialCode ?? '').toUpperCase().slice(0, ROOM_CODE_LENGTH));
   const [mode, setMode] = useState<'create' | 'join'>(defaultJoin ? 'join' : 'create');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (hydrated && username) setName(username);
-  }, [hydrated, username]);
+    if (username) setName(username);
+  }, [username]);
 
   const validName = (): string | null => {
     const trimmed = name.trim();
@@ -105,25 +105,6 @@ export function EntryScreen({ defaultJoin, initialCode, onCreate, onJoin }: Prop
               </button>
             ))}
           </div>
-        </div>
-        <div className="flex overflow-hidden rounded-lg border border-white/10">
-          {(
-            [
-              { s: PlayerShape.Round, icon: '●' },
-              { s: PlayerShape.Square, icon: '■' },
-            ] as const
-          ).map(({ s, icon }) => (
-            <button
-              key={s}
-              onClick={() => setShape(s)}
-              className={`px-3 py-2 text-sm ${
-                shape === s ? 'bg-[var(--color-accent)] text-[var(--color-canvas)]' : 'bg-black/30 text-[var(--color-ink-soft)]'
-              }`}
-              aria-label={`shape ${s}`}
-            >
-              {icon}
-            </button>
-          ))}
         </div>
       </div>
 

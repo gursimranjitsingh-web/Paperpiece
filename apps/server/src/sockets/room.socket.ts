@@ -4,6 +4,7 @@ import {
   normalizeRoomCode,
   type Ack,
   type PlayerIdentity,
+  type RoomSettings,
   type RoomView,
 } from '@paperpiece/shared';
 import type { ZodSchema } from 'zod';
@@ -82,7 +83,10 @@ export function registerRoomHandlers(socket: AppSocket): void {
     try {
       checkRate(socket);
       const req = parse(createRoomSchema, payload);
-      const view = roomService.createRoom(identityOf(socket, req.username), req.settings);
+      const view = roomService.createRoom(
+        identityOf(socket, req.username),
+        req.settings as Partial<RoomSettings> | undefined,
+      );
       socket.data.username = req.username;
       joinSocketToRoom(socket, view);
       respond<RoomView>(ack, ok(view));
@@ -179,7 +183,7 @@ export function registerRoomHandlers(socket: AppSocket): void {
   socket.on(SocketEvent.UpdateSettings, (payload, ack) => {
     withRoom(socket, ack, (code) => {
       const req = parse(updateSettingsSchema, payload);
-      return roomService.updateSettings(code, socket.data.playerId, req.settings);
+      return roomService.updateSettings(code, socket.data.playerId, req.settings as Partial<RoomSettings>);
     });
   });
 

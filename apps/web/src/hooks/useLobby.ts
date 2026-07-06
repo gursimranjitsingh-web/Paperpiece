@@ -40,7 +40,7 @@ function emitNoArg(s: ClientSocket, event: string, timeoutMs = 8000): Promise<Ac
  * surface as toasts and reject-free {@link Ack} results.
  */
 export function useLobby() {
-  const { playerId, hydrated, ensureId } = useIdentityStore();
+  const playerId = useIdentityStore((s) => s.playerId);
   const setConnection = useRoomStore((s) => s.setConnection);
   const setRoom = useRoomStore((s) => s.setRoom);
   const setPing = useRoomStore((s) => s.setPing);
@@ -51,8 +51,11 @@ export function useLobby() {
   const activeRoomRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!hydrated) return;
-    ensureId();
+    // Connect on mount. localStorage rehydration is synchronous, so by the time
+    // this effect runs the persisted identity is loaded; we no longer gate on a
+    // `hydrated` flag (that flag was set via a non-reactive mutation and could
+    // leave the effect from ever running → connection stuck on "idle").
+    useIdentityStore.getState().ensureId();
     const id = useIdentityStore.getState();
     const socket = getSocket(identityAuth());
 
@@ -118,9 +121,9 @@ export function useLobby() {
       socket.off(SocketEvent.Countdown, onCountdown);
       socket.off(SocketEvent.ErrorMessage, onError);
     };
-    // Reconnect only needs to run once identity is hydrated.
+    // Runs once on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated]);
+  }, []);
 
   const socket = (): ClientSocket => getSocket(identityAuth());
 

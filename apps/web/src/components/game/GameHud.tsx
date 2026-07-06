@@ -23,7 +23,7 @@ function formatTime(sec: number | null): string {
 }
 
 /** In-match overlay: leaderboard, your stats, timer, ping, kill feed. */
-export function GameHud({ playerId }: { playerId: string }) {
+export function GameHud({ playerId, onExit }: { playerId: string; onExit?: () => void }) {
   const leaderboard = useGameStore((s) => s.leaderboard);
   const me = useGameStore((s) => s.me);
   const timeRemaining = useGameStore((s) => s.timeRemaining);
@@ -38,6 +38,14 @@ export function GameHud({ playerId }: { playerId: string }) {
     <>
       {/* Top-left: room + timer + alive */}
       <div className="pointer-events-none absolute left-4 top-4 flex flex-col gap-2">
+        {onExit && (
+          <button
+            onClick={onExit}
+            className="pointer-events-auto self-start rounded-lg border border-white/10 bg-black/40 px-3 py-1.5 text-sm text-[var(--color-ink-soft)] backdrop-blur transition hover:bg-white/10 hover:text-[var(--color-ink)]"
+          >
+            ← Leave match
+          </button>
+        )}
         <div className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm backdrop-blur">
           <span className="font-mono font-bold tracking-widest text-[var(--color-accent)]">{roomCode}</span>
           <span className="mx-2 text-[var(--color-ink-soft)]">·</span>

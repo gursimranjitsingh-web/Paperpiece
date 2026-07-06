@@ -91,8 +91,15 @@ export function useLobby() {
     socket.on(SocketEvent.Countdown, onCountdown);
     socket.on(SocketEvent.ErrorMessage, onError);
 
-    setConnection('connecting');
-    if (!socket.connected) socket.connect();
+    // If the singleton socket is already connected (e.g. re-mount after
+    // navigation), the 'connect' event won't fire again — reflect that now so
+    // the UI doesn't get stuck showing "idle/connecting".
+    if (socket.connected) {
+      onConnect();
+    } else {
+      setConnection('connecting');
+      socket.connect();
+    }
 
     // Latency probe every 3s.
     const pingTimer = setInterval(() => {

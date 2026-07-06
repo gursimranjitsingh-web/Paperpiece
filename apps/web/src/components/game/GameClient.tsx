@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { PlayerState, directionToAngle } from '@paperpiece/shared';
+import { PlayerState, SocketEvent, directionToAngle } from '@paperpiece/shared';
 import { Chat } from '@/components/Chat';
 import { EmojiReactions } from '@/components/EmojiReactions';
 import { useGame } from '@/hooks/useGame';
@@ -12,6 +12,8 @@ import { useGameStore } from '@/stores/gameStore';
 import { useRoomStore } from '@/stores/roomStore';
 import { gameBuffer } from '@/lib/gameBuffer';
 import { replay } from '@/lib/replay';
+import { getSocket } from '@/lib/socket';
+import { identityAuth } from '@/stores/identityStore';
 import { GameHud } from './GameHud';
 import { Minimap } from './Minimap';
 import { TouchControls } from './TouchControls';
@@ -26,6 +28,15 @@ export function GameClient() {
   const router = useRouter();
   const { playerId, sendAngle, mouseControl } = useGame();
   const active = useGameStore((s) => s.active);
+
+  /** Leave the match: tell the server to remove us, clear local state, go home. */
+  const exitMatch = (): void => {
+    getSocket(identityAuth()).emit(SocketEvent.LeaveRoom);
+    useGameStore.getState().reset();
+    gameBuffer.reset();
+    useRoomStore.getState().reset();
+    router.push('/');
+  };
   const result = useGameStore((s) => s.result);
   const room = useRoomStore((s) => s.room);
 
@@ -42,7 +53,7 @@ export function GameClient() {
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-[var(--color-canvas)]">
       <GameBoard3D localId={playerId} />
-      <GameHud playerId={playerId} />
+      <GameHud playerId={playerId} onExit={exitMatch} />
       <Minimap localId={playerId} />
       <Chat variant="game" />
       <EmojiReactions />

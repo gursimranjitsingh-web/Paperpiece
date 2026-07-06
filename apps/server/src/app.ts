@@ -13,6 +13,11 @@ import { statsRouter } from './routes/stats.js';
 export function createApp(): Application {
   const app = express();
 
+  // Behind a platform proxy (Railway/Render/Fly) the real client IP is in
+  // X-Forwarded-For. Trust it so rate limiting is PER USER — otherwise every
+  // player shares one bucket (the proxy's IP) and a few players trip 429s.
+  app.set('trust proxy', 1);
+
   app.disable('x-powered-by');
   app.use(helmet());
   app.use(cors({ origin: corsOrigins, credentials: true }));
@@ -21,9 +26,10 @@ export function createApp(): Application {
 
   app.use('/api', healthRouter);
   // Rate-limit the read API to blunt scraping / abuse (health is exempt above).
+  // Generous per-IP budget so normal polling (public rooms, profile) never trips.
   const readLimiter = rateLimit({
     windowMs: 60_000,
-    max: 120,
+    max: 300,
     standardHeaders: true,
     legacyHeaders: false,
   });

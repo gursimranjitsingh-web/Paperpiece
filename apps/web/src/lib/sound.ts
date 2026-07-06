@@ -40,6 +40,8 @@ class SoundManager {
   private unlocked = false;
   private cache = new Map<SfxKey, HTMLAudioElement>();
   private music: HTMLAudioElement | null = null;
+  /** The currently-playing countdown beep, so it can be cut off / replaced. */
+  private countdownNode: HTMLAudioElement | null = null;
 
   init(): void {
     if (typeof window === 'undefined') return;
@@ -77,6 +79,47 @@ class SoundManager {
       void node.play().catch(() => {});
     } catch {
       /* ignore */
+    }
+  }
+
+  /**
+   * Play a single countdown tick. Only one countdown beep plays at a time (each
+   * tick replaces the last) and it's truncated to under a second, so a long
+   * countdown.mp3 can't overlap itself or run past the 3-second countdown.
+   */
+  playCountdown(): void {
+    if (this.muted || !this.unlocked || typeof window === 'undefined') return;
+    try {
+      this.stopCountdown();
+      let base = this.cache.get('countdown');
+      if (!base) {
+        base = new Audio(FILES.countdown);
+        base.preload = 'auto';
+        this.cache.set('countdown', base);
+      }
+      const node = base.cloneNode() as HTMLAudioElement;
+      node.volume = VOLUME.countdown;
+      this.countdownNode = node;
+      void node.play().catch(() => {});
+      // Cut the beep off before the next tick (ticks are 1s apart).
+      window.setTimeout(() => {
+        if (this.countdownNode === node) this.stopCountdown();
+      }, 900);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /** Stop any in-flight countdown beep (e.g. when the match starts). */
+  stopCountdown(): void {
+    if (this.countdownNode) {
+      try {
+        this.countdownNode.pause();
+        this.countdownNode.currentTime = 0;
+      } catch {
+        /* ignore */
+      }
+      this.countdownNode = null;
     }
   }
 

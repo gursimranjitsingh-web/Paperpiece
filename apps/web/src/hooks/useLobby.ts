@@ -78,7 +78,8 @@ export function useLobby() {
     const onPlayerLeft = (p: { username: string }): void => toast.info(`${p.username} left`);
     const onCountdown = (secs: number): void => {
       setCountdown(secs > 0 ? secs : null);
-      if (secs > 0) sound.play('countdown');
+      if (secs > 0) sound.playCountdown();
+      else sound.stopCountdown(); // countdown hit 0 → match starting
     };
     const onError = (p: { message: string }): void => toast.error(p.message);
 

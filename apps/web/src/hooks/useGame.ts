@@ -77,6 +77,7 @@ export function useGame() {
       useGameStore.getState().setDims(snap.width, snap.height);
       if (!announced) {
         announced = true;
+        sound.stopCountdown(); // ensure no countdown beep bleeds into the match
         sound.play('start');
         sound.startMusic();
         replay.start();

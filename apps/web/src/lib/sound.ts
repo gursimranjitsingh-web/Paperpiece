@@ -37,11 +37,17 @@ const MUTE_KEY = 'paperpiece:muted';
 
 class SoundManager {
   private muted = false;
+  private master = 0.8; // master volume multiplier (0-1)
   private unlocked = false;
   private cache = new Map<SfxKey, HTMLAudioElement>();
   private music: HTMLAudioElement | null = null;
   /** The currently-playing countdown beep, so it can be cut off / replaced. */
   private countdownNode: HTMLAudioElement | null = null;
+
+  setMasterVolume(v: number): void {
+    this.master = Math.max(0, Math.min(1, v));
+    if (this.music) this.music.volume = 0.25 * this.master;
+  }
 
   init(): void {
     if (typeof window === 'undefined') return;
@@ -75,7 +81,7 @@ class SoundManager {
         this.cache.set(key, base);
       }
       const node = base.cloneNode() as HTMLAudioElement;
-      node.volume = VOLUME[key];
+      node.volume = VOLUME[key] * this.master;
       void node.play().catch(() => {});
     } catch {
       /* ignore */
@@ -98,7 +104,7 @@ class SoundManager {
         this.cache.set('countdown', base);
       }
       const node = base.cloneNode() as HTMLAudioElement;
-      node.volume = VOLUME.countdown;
+      node.volume = VOLUME.countdown * this.master;
       this.countdownNode = node;
       void node.play().catch(() => {});
       // Cut the beep off before the next tick (ticks are 1s apart).
@@ -129,7 +135,7 @@ class SoundManager {
       if (!this.music) {
         this.music = new Audio(MUSIC_FILE);
         this.music.loop = true;
-        this.music.volume = 0.25;
+        this.music.volume = 0.25 * this.master;
       }
       this.music.muted = this.muted;
       void this.music.play().catch(() => {});

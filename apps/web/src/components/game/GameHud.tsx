@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import { PowerUpType } from '@paperpiece/shared';
-import { MuteButton } from '@/components/MuteButton';
+import { SettingsMenu } from '@/components/SettingsMenu';
 import { gameBuffer } from '@/lib/gameBuffer';
 import { useGameStore } from '@/stores/gameStore';
 import { useRoomStore } from '@/stores/roomStore';
@@ -99,9 +99,9 @@ export function GameHud({ playerId, onExit }: { playerId: string; onExit?: () =>
         </ol>
       </div>
 
-      {/* Bottom-right: mute */}
+      {/* Bottom-right: settings */}
       <div className="pointer-events-auto absolute bottom-4 right-4">
-        <MuteButton />
+        <SettingsMenu placement="top" />
       </div>
 
       {/* Top-center: kill feed */}

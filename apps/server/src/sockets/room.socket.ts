@@ -205,6 +205,17 @@ export function registerRoomHandlers(socket: AppSocket): void {
       respond<null>(ack, fail(err));
     }
   });
+
+  // Host restarts a finished match: reset the room back to the lobby.
+  socket.on(SocketEvent.Rematch, (ack) => {
+    withRoom(socket, ack, (code) => {
+      const room = roomService.get(code);
+      if (!room) throw RoomErrors.notFound();
+      if (room.hostId !== socket.data.playerId) throw RoomErrors.notHost();
+      roomService.returnToLobby(code);
+      return roomService.toView(room);
+    });
+  });
 }
 
 /** Add the socket to the transport room and record it on the socket. */

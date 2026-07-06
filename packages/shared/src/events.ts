@@ -46,6 +46,7 @@ export const SocketEvent = {
   SetNickname: 'set-nickname',
   KickPlayer: 'kick-player',
   StartGame: 'start-game',
+  Rematch: 'rematch',
   RoomUpdate: 'room-update',
   PlayerJoined: 'player-joined',
   PlayerLeft: 'player-left',
@@ -93,6 +94,7 @@ export interface ClientToServerEvents {
   'set-nickname': (req: SetNicknameRequest, ack?: (res: Ack<RoomView>) => void) => void;
   'kick-player': (req: KickPlayerRequest, ack?: (res: Ack<RoomView>) => void) => void;
   'start-game': (ack?: (res: Ack<null>) => void) => void;
+  'rematch': (ack?: (res: Ack<RoomView>) => void) => void;
 
   'player-input': (req: PlayerInputRequest) => void;
   'use-powerup': (req: UsePowerUpRequest) => void;

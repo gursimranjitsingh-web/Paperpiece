@@ -3,9 +3,10 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { RoomStatus } from '@paperpiece/shared';
 import { useLobby } from '@/hooks/useLobby';
+import { useIdentityStore } from '@/stores/identityStore';
 import { useRoomStore } from '@/stores/roomStore';
 import { Chat } from '@/components/Chat';
 import { EmojiReactions } from '@/components/EmojiReactions';
@@ -25,6 +26,21 @@ export function LobbyClient() {
   useEffect(() => {
     if (room?.status === RoomStatus.Playing) router.push('/play');
   }, [room?.status, router]);
+
+  // Quick Play: once connected, auto-create a bot-filled room and start it, so
+  // the player drops straight into a match. Guarded to fire exactly once.
+  const quick = params.get('quick') === '1';
+  const quickFired = useRef(false);
+  useEffect(() => {
+    if (!quick || quickFired.current) return;
+    if (connection !== 'connected' || room) return;
+    quickFired.current = true;
+    void (async () => {
+      const name = useIdentityStore.getState().username || 'Player';
+      const res = await lobby.createRoom(name, { fillWithBots: true, isPublic: false });
+      if (res.ok) await lobby.startGame();
+    })();
+  }, [quick, connection, room, lobby]);
 
   const defaultJoin = params.get('join') === '1' || params.has('code');
 

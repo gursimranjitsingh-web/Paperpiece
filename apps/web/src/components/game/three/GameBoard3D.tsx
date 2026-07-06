@@ -6,6 +6,7 @@ import { Bloom, EffectComposer } from '@react-three/postprocessing';
 import { useMemo } from 'react';
 import { useGameStore } from '@/stores/gameStore';
 import { useRoomStore } from '@/stores/roomStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { themeOf } from '@/lib/theme';
 import { CameraRig } from './CameraRig';
 import { CellGrid } from './CellGrid';
@@ -42,6 +43,7 @@ export function GameBoard3D({ localId }: { localId: string }) {
   const width = useGameStore((s) => s.width);
   const height = useGameStore((s) => s.height);
   const theme = themeOf(useRoomStore((s) => s.room?.settings.theme));
+  const bloom = useSettingsStore((s) => s.bloom);
 
   if (!width || !height) return null;
 
@@ -63,9 +65,11 @@ export function GameBoard3D({ localId }: { localId: string }) {
       <Particles />
       <BoardBorder width={width} height={height} color={theme.border} />
 
-      <EffectComposer>
-        <Bloom intensity={theme.bloomIntensity} luminanceThreshold={0.5} luminanceSmoothing={0.25} mipmapBlur />
-      </EffectComposer>
+      {bloom && (
+        <EffectComposer>
+          <Bloom intensity={theme.bloomIntensity} luminanceThreshold={0.5} luminanceSmoothing={0.25} mipmapBlur />
+        </EffectComposer>
+      )}
     </Canvas>
   );
 }

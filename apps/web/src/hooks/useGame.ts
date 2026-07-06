@@ -127,7 +127,9 @@ export function useGame() {
       if (evt.victimId === id.playerId) {
         lastAngleRef.current = null;
         sound.play('death');
-        fx.shake(1.4);
+        fx.shake(1.8);
+        fx.punch(0.35); // brief zoom-in impact on your own death
+        if (victim) fx.burst(victim.position.x, victim.position.y, victim.color, 48, 11);
       } else if (evt.killerId === id.playerId) {
         sound.play('kill');
         fx.shake(0.6);
@@ -146,12 +148,17 @@ export function useGame() {
       sound.stopMusic();
       sound.play('win');
     };
+    // Track room updates so the match screen can react to a rematch (host
+    // sending the room back to the lobby).
+    const onRoomUpdate = (room: import('@paperpiece/shared').RoomView): void =>
+      useRoomStore.getState().setRoom(room);
 
     socket.on(SocketEvent.GameState, onState);
     socket.on(SocketEvent.GameDelta, onDelta);
     socket.on(SocketEvent.PlayerDied, onDied);
     socket.on(SocketEvent.TerritoryUpdate, onCapture);
     socket.on(SocketEvent.MatchEnded, onEnded);
+    socket.on(SocketEvent.RoomUpdate, onRoomUpdate);
     if (!socket.connected) socket.connect();
 
     // Also request on mount, and keep a slower retry as a backstop (covers the
@@ -188,6 +195,7 @@ export function useGame() {
       socket.off(SocketEvent.PlayerDied, onDied);
       socket.off(SocketEvent.TerritoryUpdate, onCapture);
       socket.off(SocketEvent.MatchEnded, onEnded);
+      socket.off(SocketEvent.RoomUpdate, onRoomUpdate);
     };
   }, [nameOf]);
 

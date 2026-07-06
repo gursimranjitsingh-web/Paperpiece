@@ -43,7 +43,7 @@ export function sanitizeUsername(input: string): string | null {
   const name = input.trim().replace(/\s+/g, ' ');
   if (name.length < MIN_USERNAME_LENGTH || name.length > MAX_USERNAME_LENGTH) return null;
   // Disallow control characters; allow letters, numbers, spaces, common punctuation.
-  if (!/^[\p{L}\p{N} _.\-]+$/u.test(name)) return null;
+  if (!/^[\p{L}\p{N} _.-]+$/u.test(name)) return null;
   return name;
 }
 

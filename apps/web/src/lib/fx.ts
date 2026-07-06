@@ -22,14 +22,26 @@ const MAX_PARTICLES = 400;
 class Fx {
   particles: Particle[] = [];
   shakeMag = 0;
+  /** Transient zoom multiplier delta (e.g. death impact); decays to 0. */
+  zoomPunch = 0;
+  /** When false (reduced-motion setting), particles + shake are suppressed. */
+  enabled = true;
 
   /** Add a camera shake (magnitude in world units); larger overrides smaller. */
   shake(mag: number): void {
+    if (!this.enabled) return;
     this.shakeMag = Math.max(this.shakeMag, mag);
+  }
+
+  /** Punch the camera zoom (fraction, e.g. 0.4 = +40%); eases back to 0. */
+  punch(mag: number): void {
+    if (!this.enabled) return;
+    this.zoomPunch = Math.max(this.zoomPunch, mag);
   }
 
   /** Spawn a radial burst of `count` particles at a grid cell. */
   burst(cellX: number, cellY: number, color: string, count = 18, speed = 6): void {
+    if (!this.enabled) return;
     for (let i = 0; i < count; i += 1) {
       if (this.particles.length >= MAX_PARTICLES) break;
       const a = (i / count) * Math.PI * 2 + Math.random() * 0.5;
@@ -65,11 +77,14 @@ class Fx {
     }
     this.shakeMag *= Math.pow(0.001, clamped); // fast exponential decay
     if (this.shakeMag < 0.01) this.shakeMag = 0;
+    this.zoomPunch *= Math.pow(0.02, clamped); // ease the zoom punch back
+    if (this.zoomPunch < 0.005) this.zoomPunch = 0;
   }
 
   reset(): void {
     this.particles = [];
     this.shakeMag = 0;
+    this.zoomPunch = 0;
   }
 }
 

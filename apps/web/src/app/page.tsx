@@ -1,13 +1,15 @@
 import Link from 'next/link';
 import { MAP_SIZES, MAX_PLAYERS, SERVER_TICK_RATE } from '@paperpiece/shared';
 import { BrandMark } from '@/components/BrandMark';
-import { MuteButton } from '@/components/MuteButton';
+import { FirstTimeTutorial } from '@/components/FirstTimeTutorial';
+import { SettingsMenu } from '@/components/SettingsMenu';
 import { ServerStatus } from '@/components/ServerStatus';
 
 /** Landing page — brand, hero, live server status, and entry points. */
 export default function HomePage() {
   return (
     <div className="grid-backdrop relative min-h-screen overflow-hidden">
+      <FirstTimeTutorial />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[var(--color-canvas)]" />
       <div className="pointer-events-none absolute left-1/2 top-[-10%] h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(6,214,160,0.18),transparent)] blur-2xl" />
 
@@ -24,7 +26,7 @@ export default function HomePage() {
           <Link href="/profile" className="transition hover:text-[var(--color-ink)]">
             Profile
           </Link>
-          <MuteButton />
+          <SettingsMenu />
           <ServerStatus />
         </nav>
       </header>
@@ -45,8 +47,14 @@ export default function HomePage() {
 
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <Link
-            href="/lobby"
+            href="/lobby?quick=1"
             className="rounded-xl bg-[var(--color-accent)] px-7 py-3.5 font-semibold text-[var(--color-canvas)] shadow-lg shadow-emerald-500/25 transition hover:brightness-110"
+          >
+            ⚡ Quick Play
+          </Link>
+          <Link
+            href="/lobby"
+            className="rounded-xl border border-white/15 bg-white/5 px-7 py-3.5 font-semibold text-[var(--color-ink)] transition hover:bg-white/10"
           >
             Create room
           </Link>
@@ -57,6 +65,9 @@ export default function HomePage() {
             Join with code
           </Link>
         </div>
+        <p className="mt-3 text-xs text-[var(--color-ink-soft)]">
+          Quick Play drops you straight into a match against bots — no waiting.
+        </p>
 
         {/* How it works */}
         <div className="mt-16 grid w-full grid-cols-1 gap-3 text-left sm:grid-cols-3">

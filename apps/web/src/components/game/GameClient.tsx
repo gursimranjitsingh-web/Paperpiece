@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { PlayerState, SocketEvent, directionToAngle } from '@paperpiece/shared';
+import { PlayerState, RoomStatus, SocketEvent, directionToAngle } from '@paperpiece/shared';
 import { Chat } from '@/components/Chat';
 import { EmojiReactions } from '@/components/EmojiReactions';
 import { useGame } from '@/hooks/useGame';
@@ -12,8 +12,9 @@ import { useGameStore } from '@/stores/gameStore';
 import { useRoomStore } from '@/stores/roomStore';
 import { gameBuffer } from '@/lib/gameBuffer';
 import { getSocket } from '@/lib/socket';
-import { identityAuth } from '@/stores/identityStore';
+import { identityAuth, useIdentityStore } from '@/stores/identityStore';
 import { GameHud } from './GameHud';
+import { LevelUpCelebration } from './LevelUpCelebration';
 import { Minimap } from './Minimap';
 import { TouchControls } from './TouchControls';
 
@@ -49,6 +50,15 @@ export function GameClient() {
     }
   }, [room, router]);
 
+  // Rematch: when the host sends the room back to the lobby, follow everyone there.
+  useEffect(() => {
+    if (room?.status === RoomStatus.Lobby) {
+      useGameStore.getState().reset();
+      gameBuffer.reset();
+      router.push('/lobby');
+    }
+  }, [room?.status, router]);
+
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-[var(--color-canvas)]">
       <GameBoard3D localId={playerId} />
@@ -77,6 +87,7 @@ export function GameClient() {
       {active && <SpectateHint localId={playerId} />}
 
       {result && <ResultOverlay />}
+      <LevelUpCelebration />
     </main>
   );
 }
@@ -103,7 +114,21 @@ function ResultOverlay() {
   const router = useRouter();
   const result = useGameStore((s) => s.result)!;
   const reset = useGameStore((s) => s.reset);
+  const room = useRoomStore((s) => s.room);
+  const playerId = useIdentityStore((s) => s.playerId);
+  const isHost = !!room && room.hostId === playerId;
   const winner = result.leaderboard.find((e) => e.playerId === result.winnerId);
+
+  const leaveToHome = (): void => {
+    reset();
+    gameBuffer.reset();
+    router.push('/lobby');
+  };
+  const playAgain = (): void => {
+    // Host resets the room to the lobby; everyone (host included) is carried
+    // there by the RoomStatus.Lobby effect above.
+    getSocket(identityAuth()).emit(SocketEvent.Rematch);
+  };
 
   return (
     <motion.div
@@ -131,16 +156,34 @@ function ResultOverlay() {
           ))}
         </ol>
 
-        <button
-          onClick={() => {
-            reset();
-            gameBuffer.reset();
-            router.push('/lobby');
-          }}
-          className="mt-6 w-full rounded-xl bg-[var(--color-accent)] px-6 py-3 font-semibold text-[var(--color-canvas)] transition hover:brightness-110"
-        >
-          Return to lobby
-        </button>
+        {isHost ? (
+          <div className="mt-6 flex flex-col gap-2">
+            <button
+              onClick={playAgain}
+              className="w-full rounded-xl bg-[var(--color-accent)] px-6 py-3 font-semibold text-[var(--color-canvas)] transition hover:brightness-110"
+            >
+              Play again
+            </button>
+            <button
+              onClick={leaveToHome}
+              className="w-full rounded-xl border border-white/10 px-6 py-2.5 text-sm text-[var(--color-ink-soft)] transition hover:bg-white/5"
+            >
+              Return to lobby
+            </button>
+          </div>
+        ) : (
+          <>
+            <button
+              onClick={leaveToHome}
+              className="mt-6 w-full rounded-xl bg-[var(--color-accent)] px-6 py-3 font-semibold text-[var(--color-canvas)] transition hover:brightness-110"
+            >
+              Return to lobby
+            </button>
+            <p className="mt-2 text-xs text-[var(--color-ink-soft)]">
+              Waiting for the host to start a rematch…
+            </p>
+          </>
+        )}
       </div>
     </motion.div>
   );

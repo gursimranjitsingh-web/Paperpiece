@@ -7,12 +7,13 @@
     "MONGODB_URI",
     "REDIS_URL",
     "NEXT_PUBLIC_SERVER_URL",
-    "CORS_ORIGIN"
+    "CORS_ORIGIN",
+    "STATIC_EXPORT"
   ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "out/**"]
     },
     "dev": {
       "cache": false,

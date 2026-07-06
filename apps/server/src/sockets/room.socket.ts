@@ -83,6 +83,7 @@ export function registerRoomHandlers(socket: AppSocket): void {
       checkRate(socket);
       const req = parse(createRoomSchema, payload);
       const view = roomService.createRoom(identityOf(socket, req.username), req.settings);
+      socket.data.username = req.username;
       joinSocketToRoom(socket, view);
       respond<RoomView>(ack, ok(view));
     } catch (err) {

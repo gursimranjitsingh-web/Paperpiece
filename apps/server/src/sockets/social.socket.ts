@@ -22,11 +22,16 @@ export function registerSocialHandlers(io: AppServer, socket: AppSocket): void {
     return count > 15; // ~3 messages/sec sustained
   };
 
-  const senderColor = (): string => {
+  // Resolve the sender's authoritative name + colour from the room roster (the
+  // socket's handshake username can be a stale "Guest" if they connected before
+  // choosing a nickname).
+  const sender = (): { username: string; color: string } => {
     const code = socket.data.roomCode;
-    if (!code) return '#9aa4bd';
-    const room = roomService.get(code);
-    return room?.members.get(socket.data.playerId)?.color ?? '#9aa4bd';
+    const member = code ? roomService.get(code)?.members.get(socket.data.playerId) : null;
+    return {
+      username: member?.username ?? socket.data.username,
+      color: member?.color ?? '#9aa4bd',
+    };
   };
 
   socket.on(SocketEvent.Chat, (payload) => {
@@ -34,10 +39,11 @@ export function registerSocialHandlers(io: AppServer, socket: AppSocket): void {
     if (!code || rateLimited()) return;
     const parsed = chatSchema.safeParse(payload);
     if (!parsed.success) return;
+    const { username, color } = sender();
     io.to(roomKey(code)).emit(SocketEvent.Chat, {
       playerId: socket.data.playerId,
-      username: socket.data.username,
-      color: senderColor(),
+      username,
+      color,
       text: parsed.data.text,
       time: Date.now(),
     });

@@ -72,10 +72,17 @@ for _ in $(seq 1 40); do
 done
 [ -z "$URL" ] && { echo "❌ could not get tunnel URL — see /tmp/pp-cf.log"; exit 1; }
 
+LAN="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
+
 echo ""
 echo "────────────────────────────────────────────────────────────"
-echo "  🎮  SHARE THIS LINK:  $URL"
+echo "  🌍  INTERNET (any friend):   $URL"
+if [ -n "$LAN" ]; then
+  echo "  ⚡  SAME WI-FI (lowest lag): http://$LAN:4000"
+fi
 echo "────────────────────────────────────────────────────────────"
+echo "  Same-WiFi friends should use the LAN link — it skips Cloudflare"
+echo "  entirely (near-zero lag). Remote friends use the internet link."
 echo "  (production build · single origin · Ctrl-C to stop)"
 echo ""
 

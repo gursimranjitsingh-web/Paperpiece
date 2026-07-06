@@ -96,7 +96,7 @@ export interface ClientToServerEvents {
 
   'player-input': (req: PlayerInputRequest) => void;
   'use-powerup': (req: UsePowerUpRequest) => void;
-  'request-state': () => void;
+  'request-state': (roomCode?: string) => void;
 
   chat: (req: ChatMessageRequest) => void;
   emoji: (req: EmojiReactionRequest) => void;

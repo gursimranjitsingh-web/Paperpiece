@@ -50,6 +50,20 @@ export function useGame() {
     const socket = getSocket(identityAuth());
     const store = useGameStore.getState();
 
+    // Ask the server for the full board snapshot (passing the room code we're in,
+    // which is more reliable than server-side socket state during transitions).
+    let lastReq = 0;
+    const requestSnapshot = (): void => {
+      const code = useRoomStore.getState().room?.roomCode;
+      socket.emit(SocketEvent.RequestState, code);
+    };
+    const requestSnapshotThrottled = (): void => {
+      const now = Date.now();
+      if (now - lastReq < 250) return;
+      lastReq = now;
+      requestSnapshot();
+    };
+
     const updateHud = (payload: {
       tick: number;
       leaderboard: GameStateDelta['leaderboard'];
@@ -89,6 +103,10 @@ export function useGame() {
     };
     let prevPowerCount = 0;
     const onDelta = (delta: GameStateDelta): void => {
+      // If deltas are arriving but we never got the full snapshot (the board
+      // isn't built), request it immediately — this is the reliable recovery for
+      // the "stuck on Connecting to match…" race.
+      if (!useGameStore.getState().active) requestSnapshotThrottled();
       gameBuffer.applyDelta(delta);
       // Detect the local player picking up a power-up (active count grew).
       const mine = gameBuffer.players.get(id.playerId)?.activePowerUps.length ?? 0;
@@ -136,27 +154,21 @@ export function useGame() {
     socket.on(SocketEvent.MatchEnded, onEnded);
     if (!socket.connected) socket.connect();
 
-    // Request the full board snapshot on mount and KEEP retrying until it
-    // arrives (active === true). This closes the snapshot/navigation race where
-    // we start receiving deltas before the initial snapshot — otherwise the
-    // board never builds and we're stuck on "Connecting to match…". The retry
-    // also covers the case where our request beats the server creating the match.
-    const requestSnapshot = (): void => {
-      socket.emit(SocketEvent.RequestState);
-    };
+    // Also request on mount, and keep a slower retry as a backstop (covers the
+    // case where our first request beats the server creating the match).
     const kick = (): void => requestSnapshot();
     if (socket.connected) kick();
     else socket.once('connect', kick);
 
     let resyncTries = 0;
     const resyncTimer = setInterval(() => {
-      if (useGameStore.getState().active || resyncTries > 20) {
+      if (useGameStore.getState().active || resyncTries > 30) {
         clearInterval(resyncTimer);
         return;
       }
       resyncTries += 1;
       if (socket.connected) requestSnapshot();
-    }, 500);
+    }, 700);
 
     // Keep latency fresh while in the match (the lobby ping loop is unmounted).
     const pingTimer = setInterval(() => {

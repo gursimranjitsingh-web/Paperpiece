@@ -1,4 +1,4 @@
-import { SocketEvent, type PlayerInputRequest } from '@paperpiece/shared';
+import { SOCKET_ROOM_PREFIX, SocketEvent, type PlayerInputRequest } from '@paperpiece/shared';
 import { getGameManager } from '../services/GameManager.js';
 import type { AppSocket } from './types.js';
 
@@ -38,8 +38,17 @@ export function registerGameHandlers(socket: AppSocket): void {
   });
 
   // Client (re)requests the full snapshot — used to recover from the
-  // snapshot/navigation race when entering a match.
-  socket.on(SocketEvent.RequestState, () => sendSnapshotIfLive(socket));
+  // snapshot/navigation race when entering a match. The client passes the room
+  // code it believes it's in (more reliable than socket.data during transitions);
+  // we adopt it, (re)join the transport room, and send that match's snapshot.
+  socket.on(SocketEvent.RequestState, (roomCode) => {
+    const code = (typeof roomCode === 'string' && roomCode) || socket.data.roomCode;
+    if (!code) return;
+    socket.data.roomCode = code;
+    socket.join(`${SOCKET_ROOM_PREFIX}${code}`);
+    const snap = getGameManager()?.snapshot(code);
+    if (snap) socket.emit(SocketEvent.GameState, snap);
+  });
 }
 
 /** Send the current match snapshot to a socket if a match is live (reconnect). */

@@ -17,6 +17,8 @@ export interface Player {
   pattern: PlayerPattern;
   /** Whether this player is a server-controlled bot. */
   isBot: boolean;
+  /** Team index in team modes, or null in free-for-all. */
+  team: number | null;
 
   direction: Direction;
   /** Buffered next direction, applied when it does not cause instant reversal. */
@@ -72,6 +74,8 @@ export interface PlayerSnapshot {
   shape: PlayerShape;
   pattern: PlayerPattern;
   isBot: boolean;
+  /** Team index in team modes, or null in free-for-all. */
+  team: number | null;
   direction: Direction;
   /** Continuous heading (radians) for orienting the avatar. */
   heading: number;

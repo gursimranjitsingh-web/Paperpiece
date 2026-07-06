@@ -10,6 +10,7 @@ import type {
   PlayerInputRequest,
   SetAvatarRequest,
   SetColorRequest,
+  SetTeamRequest,
   SetNicknameRequest,
   SetPatternRequest,
   SetReadyRequest,
@@ -40,6 +41,7 @@ export const SocketEvent = {
   UpdateSettings: 'update-settings',
   SetReady: 'player-ready',
   SetColor: 'set-color',
+  SetTeam: 'set-team',
   SetAvatar: 'set-avatar',
   SetShape: 'set-shape',
   SetPattern: 'set-pattern',
@@ -88,6 +90,7 @@ export interface ClientToServerEvents {
   'update-settings': (req: UpdateSettingsRequest, ack?: (res: Ack<RoomView>) => void) => void;
   'player-ready': (req: SetReadyRequest, ack?: (res: Ack<RoomView>) => void) => void;
   'set-color': (req: SetColorRequest, ack?: (res: Ack<RoomView>) => void) => void;
+  'set-team': (req: SetTeamRequest, ack?: (res: Ack<RoomView>) => void) => void;
   'set-avatar': (req: SetAvatarRequest, ack?: (res: Ack<RoomView>) => void) => void;
   'set-shape': (req: SetShapeRequest, ack?: (res: Ack<RoomView>) => void) => void;
   'set-pattern': (req: SetPatternRequest, ack?: (res: Ack<RoomView>) => void) => void;

@@ -9,6 +9,7 @@ import {
   MIN_PLAYERS,
   MIN_SPEED_MULTIPLIER,
   SPAWN_TERRITORY_SIZES,
+  TEAM_COUNTS,
   type MapSize,
   type SpawnTerritorySize,
 } from '../constants';
@@ -32,6 +33,7 @@ export function defaultRoomSettings(): RoomSettings {
     isPublic: false,
     theme: MapTheme.Neon,
     mouseControl: false,
+    teamCount: 0,
   };
 }
 
@@ -83,5 +85,8 @@ export function sanitizeSettings(
     friendlyFire: patch.friendlyFire ?? base.friendlyFire,
     fillWithBots: patch.fillWithBots ?? base.fillWithBots,
     isPublic: patch.isPublic ?? base.isPublic,
+    teamCount: TEAM_COUNTS.includes(patch.teamCount as (typeof TEAM_COUNTS)[number])
+      ? (patch.teamCount as number)
+      : base.teamCount,
   };
 }

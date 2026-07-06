@@ -177,6 +177,12 @@ export function useLobby() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const setTeam = useCallback(async (team: number): Promise<void> => {
+    const res = await emitWithAck<{ team: number }, RoomView>(socket(), SocketEvent.SetTeam, { team });
+    if (!res.ok) toast.error(res.error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const setAvatar = useCallback(async (avatar: string): Promise<void> => {
     useIdentityStore.getState().setAvatar(avatar);
     const s = socket();
@@ -243,6 +249,7 @@ export function useLobby() {
     leaveRoom,
     setReady,
     setColor,
+    setTeam,
     setAvatar,
     setShape,
     setPattern,

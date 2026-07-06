@@ -44,6 +44,10 @@ export interface SetColorRequest {
   color: string;
 }
 
+export interface SetTeamRequest {
+  team: number;
+}
+
 export interface SetAvatarRequest {
   avatar: string;
 }

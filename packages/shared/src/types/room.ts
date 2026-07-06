@@ -25,6 +25,8 @@ export interface RoomSettings {
   theme: MapTheme;
   /** When true, players steer by moving the mouse instead of WASD/arrows. */
   mouseControl: boolean;
+  /** Number of teams (0 = free-for-all). See TEAM_COUNTS. */
+  teamCount: number;
 }
 
 /** Per-player cosmetic identity, chosen client-side and echoed to the room. */
@@ -45,6 +47,8 @@ export interface RoomMember {
   isHost: boolean;
   isReady: boolean;
   isBot: boolean;
+  /** Team index in team modes, or null in free-for-all. */
+  team: number | null;
   /** True while connected; used to show reconnecting state. */
   connected: boolean;
 }

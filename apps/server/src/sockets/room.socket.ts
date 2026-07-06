@@ -23,6 +23,7 @@ import {
   setPatternSchema,
   setReadySchema,
   setShapeSchema,
+  setTeamSchema,
   updateSettingsSchema,
 } from './validation.js';
 
@@ -144,6 +145,13 @@ export function registerRoomHandlers(socket: AppSocket): void {
     withRoom(socket, ack, (code) => {
       const req = parse(setColorSchema, payload);
       return roomService.setColor(code, socket.data.playerId, req.color);
+    });
+  });
+
+  socket.on(SocketEvent.SetTeam, (payload, ack) => {
+    withRoom(socket, ack, (code) => {
+      const req = parse(setTeamSchema, payload);
+      return roomService.setTeam(code, socket.data.playerId, req.team);
     });
   });
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { PowerUpType } from '@paperpiece/shared';
+import { PowerUpType, TEAM_META } from '@paperpiece/shared';
 import { SettingsMenu } from '@/components/SettingsMenu';
 import { gameBuffer } from '@/lib/gameBuffer';
 import { useGameStore } from '@/stores/gameStore';
@@ -33,10 +33,23 @@ export function GameHud({ playerId, onExit }: { playerId: string; onExit?: () =>
   const killFeed = useGameStore((s) => s.killFeed);
   const roomCode = useRoomStore((s) => s.room?.roomCode);
   const pingMs = useRoomStore((s) => s.pingMs);
+  const teamCount = useRoomStore((s) => s.room?.settings.teamCount ?? 0);
   useGameStore((s) => s.frame); // re-read active power-ups each tick
   const meBuf = gameBuffer.players.get(playerId);
   const myPowers = meBuf?.activePowerUps ?? [];
   const combo = meBuf?.combo ?? 0;
+
+  // Team standings: sum each team's territory% from the live leaderboard.
+  const teamTotals: { team: number; percent: number }[] = [];
+  if (teamCount > 0) {
+    const sums = new Array<number>(teamCount).fill(0);
+    for (const e of leaderboard) {
+      const t = gameBuffer.players.get(e.playerId)?.team;
+      if (t != null && t < teamCount) sums[t] = (sums[t] ?? 0) + e.territoryPercent;
+    }
+    for (let i = 0; i < teamCount; i += 1) teamTotals.push({ team: i, percent: Math.round((sums[i] ?? 0) * 10) / 10 });
+    teamTotals.sort((a, b) => b.percent - a.percent);
+  }
 
   return (
     <>
@@ -81,8 +94,32 @@ export function GameHud({ playerId, onExit }: { playerId: string; onExit?: () =>
         )}
       </div>
 
-      {/* Top-right: leaderboard */}
-      <div className="pointer-events-none absolute right-4 top-4 w-56 rounded-xl border border-white/10 bg-black/40 p-3 text-sm backdrop-blur">
+      {/* Top-right: team standings (team modes only) */}
+      {teamCount > 0 && (
+        <div className="pointer-events-none absolute right-4 top-4 w-56 rounded-xl border border-white/10 bg-black/40 p-3 text-sm backdrop-blur">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--color-ink-soft)]">
+            Teams
+          </p>
+          <ul className="flex flex-col gap-1">
+            {teamTotals.map((t) => (
+              <li key={t.team} className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: TEAM_META[t.team]?.color }} />
+                <span className="flex-1" style={{ color: TEAM_META[t.team]?.color }}>
+                  {TEAM_META[t.team]?.label}
+                </span>
+                <span className="tabular-nums font-semibold">{t.percent}%</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Top-right: leaderboard (shifts down when the team panel is shown) */}
+      <div
+        className={`pointer-events-none absolute right-4 w-56 rounded-xl border border-white/10 bg-black/40 p-3 text-sm backdrop-blur ${
+          teamCount > 0 ? 'top-32' : 'top-4'
+        }`}
+      >
         <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--color-ink-soft)]">
           Leaderboard
         </p>

@@ -10,6 +10,7 @@ import {
   SOCKET_ROOM_PREFIX,
   SocketEvent,
   directionToAngle,
+  teamColor,
   type GameStateSnapshot,
 } from '@paperpiece/shared';
 import { logger } from '../config/logger.js';
@@ -66,6 +67,7 @@ export class GameManager {
     if (!room) return;
     const view = roomService.toView(room);
 
+    const teamCount = view.settings.teamCount;
     const seeds: SeedPlayer[] = view.members.map((m) => ({
       id: m.id,
       username: m.username,
@@ -74,6 +76,7 @@ export class GameManager {
       shape: m.shape,
       pattern: m.pattern,
       avatar: m.avatar,
+      team: m.team,
     }));
 
     // Optionally fill remaining slots with bots.
@@ -82,10 +85,23 @@ export class GameManager {
       const used = new Set(seeds.map((s) => s.color));
       let n = 1;
       while (seeds.length < view.settings.playerLimit) {
-        const color = PLAYER_COLORS.find((c) => !used.has(c)) ?? PLAYER_COLORS[seeds.length % PLAYER_COLORS.length]!;
-        used.add(color);
+        // In team mode bots join the smallest team and wear its colour;
+        // otherwise they take the next free unique colour.
+        let team: number | null = null;
+        let color: string;
+        if (teamCount > 0) {
+          const counts = new Array<number>(teamCount).fill(0);
+          for (const s of seeds) {
+            if (s.team != null && s.team < teamCount) counts[s.team] = (counts[s.team] ?? 0) + 1;
+          }
+          team = counts.indexOf(Math.min(...counts));
+          color = teamColor(team);
+        } else {
+          color = PLAYER_COLORS.find((c) => !used.has(c)) ?? PLAYER_COLORS[seeds.length % PLAYER_COLORS.length]!;
+          used.add(color);
+        }
         const id = `bot_${roomCode}_${n}`;
-        seeds.push({ id, username: `Bot ${n}`, color, isBot: true });
+        seeds.push({ id, username: `Bot ${n}`, color, isBot: true, team });
         botIds.push(id);
         n += 1;
       }

@@ -51,6 +51,8 @@ export interface SeedPlayer {
   shape?: PlayerShape;
   pattern?: PlayerPattern;
   avatar?: string;
+  /** Team index in team modes, or null/undefined for free-for-all. */
+  team?: number | null;
 }
 
 /** Everything produced by a single authoritative tick, ready to broadcast. */
@@ -293,9 +295,12 @@ export class MatchSimulation {
     const trailOwner = this.grid.getTrailOwner(x, y);
 
     // Cutting an enemy's trail kills that enemy (attacker gets the credit).
+    // Teammates never cut each other, regardless of the friendly-fire setting.
     if (trailOwner && trailOwner !== p.id && this.settings.friendlyFire) {
       const victim = this.players.get(trailOwner);
-      if (victim && victim.alive) this.kill(victim, DeathCause.EnemyTrail, p.id, deaths);
+      if (victim && victim.alive && !this.sameTeam(p, victim)) {
+        this.kill(victim, DeathCause.EnemyTrail, p.id, deaths);
+      }
     }
 
     // Crossing your own trail is fatal — unless it's part of the immune neck,
@@ -352,6 +357,11 @@ export class MatchSimulation {
   private hasPower(p: Player, type: PowerUpType): boolean {
     const exp = p.activePowerUps[type];
     return exp !== undefined && exp > this.now;
+  }
+
+  /** True when two players share a (non-null) team — used for friendly immunity. */
+  private sameTeam(a: Player, b: Player): boolean {
+    return a.team !== null && a.team === b.team;
   }
 
   /** Expire lapsed effects and occasionally spawn a new drop. */
@@ -462,11 +472,14 @@ export class MatchSimulation {
     }
     for (const group of byCell.values()) {
       if (group.length < 2) continue;
-      // A player standing in their own territory is safe; intruders die.
-      // Phased (Ghost) players are immune to head-on collisions.
+      // A player standing in their own territory is safe; intruders die — but
+      // only to a *rival* sharing the cell (teammates pass through each other),
+      // and phased (Ghost) players are immune to head-ons entirely.
       for (const p of group) {
         const safe = this.grid.getOwner(p.cell.x, p.cell.y) === p.id;
-        if (!safe && !this.hasPower(p, PowerUpType.Ghost)) this.kill(p, DeathCause.HeadOn, null, deaths);
+        if (safe || this.hasPower(p, PowerUpType.Ghost)) continue;
+        const hasRival = group.some((o) => o.id !== p.id && !this.sameTeam(p, o));
+        if (hasRival) this.kill(p, DeathCause.HeadOn, null, deaths);
       }
     }
   }
@@ -569,7 +582,16 @@ export class MatchSimulation {
       now - this.startedAt >= this.settings.matchDurationSeconds * 1000;
 
     const alive = [...this.players.values()].filter((p) => p.alive);
-    const lastStanding = this.players.size > 1 && alive.length <= 1;
+    let lastStanding: boolean;
+    if (this.settings.teamCount > 0) {
+      // Team mode: the match ends when only one team still has players alive
+      // (and more than one team was represented to begin with).
+      const startingTeams = new Set([...this.players.values()].map((p) => p.team)).size;
+      const aliveTeams = new Set(alive.map((p) => p.team)).size;
+      lastStanding = startingTeams > 1 && aliveTeams <= 1;
+    } else {
+      lastStanding = this.players.size > 1 && alive.length <= 1;
+    }
 
     if (!timeUp && !lastStanding) return null;
 
@@ -602,6 +624,7 @@ export class MatchSimulation {
       shape: seed.shape ?? PlayerShape.Round,
       pattern: seed.pattern ?? PlayerPattern.Solid,
       isBot: seed.isBot,
+      team: seed.team ?? null,
       direction: Direction.None,
       pendingDirection: Direction.None,
       heading: 0,
@@ -642,6 +665,7 @@ export class MatchSimulation {
       shape: p.shape,
       pattern: p.pattern,
       isBot: p.isBot,
+      team: p.team,
       direction: p.direction,
       heading: p.heading,
       position: p.position,

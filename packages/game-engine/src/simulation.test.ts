@@ -197,6 +197,54 @@ describe('MatchSimulation — combo scoring', () => {
   });
 });
 
+describe('MatchSimulation — teams', () => {
+  const twoTeamPlayers = (): SeedPlayer[] => [
+    { id: 'a1', username: 'A1', color: '#3a86ff', isBot: false, team: 0 },
+    { id: 'a2', username: 'A2', color: '#3a86ff', isBot: false, team: 0 },
+  ];
+
+  it('does not let a teammate cut a teammate down (friendly immunity)', () => {
+    const sim = new MatchSimulation('TEAM1', settings({ friendlyFire: true, teamCount: 2 }), twoTeamPlayers(), 0);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const inner: any = sim as any;
+    const a1 = inner.players.get('a1');
+    const a2 = inner.players.get('a2');
+    // Lay a trail cell for a2, then drive a1 through it.
+    a2.trail = [{ x: 10, y: 10 }];
+    sim.grid.setTrailOwner(10, 10, 'a2');
+    a1.alive = true;
+    a1.cell = { x: 9, y: 10 };
+    a1.position = { x: 9, y: 10 };
+    inner.enterCell(a1, [], []);
+    a1.cell = { x: 10, y: 10 };
+    const deaths: unknown[] = [];
+    inner.enterCell(a1, deaths, []);
+    // a2 (teammate) survives a1 crossing its trail.
+    expect(a2.alive).toBe(true);
+    expect(deaths.length).toBe(0);
+  });
+
+  it('ends the match when only one team remains alive', () => {
+    const seeds: SeedPlayer[] = [
+      { id: 'a', username: 'A', color: '#3a86ff', isBot: false, team: 0 },
+      { id: 'b', username: 'B', color: '#ef476f', isBot: false, team: 1 },
+    ];
+    const sim = new MatchSimulation('TEAM2', settings({ teamCount: 2, respawnSeconds: 0 }), seeds, 0);
+    const t = { now: 0 };
+    // Kill team 1's only member by walking it off the edge.
+    for (let i = 0; i < 40; i += 1) {
+      sim.setInput('b', directionToAngle(Direction.Left));
+      t.now += 1000 / SERVER_TICK_RATE;
+      const out = sim.tick(t.now);
+      if (out.result) {
+        expect(sim.snapshot(0).players.find((p) => p.id === 'a')!.alive).toBe(true);
+        return;
+      }
+    }
+    throw new Error('match did not end when one team was eliminated');
+  });
+});
+
 describe('MatchSimulation — Ghost power-up', () => {
   it('lets a phased player cross their own trail without dying', () => {
     const sim = new MatchSimulation('GHOST1', settings(), solo(), 0);

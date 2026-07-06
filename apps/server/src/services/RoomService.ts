@@ -12,6 +12,7 @@ import {
   generateRoomCode,
   sanitizeSettings,
   sanitizeUsername,
+  teamColor,
   type PlayerIdentity,
   type RoomMember,
   type RoomSettings,
@@ -31,6 +32,7 @@ interface MemberInternal {
   isHost: boolean;
   isReady: boolean;
   isBot: boolean;
+  team: number | null;
   connected: boolean;
   socketId: string | null;
   disconnectedAt: number | null;
@@ -104,16 +106,18 @@ export class RoomService extends EventEmitter<RoomServiceEvents> {
       reconnectTimers: new Map(),
       countdownTimer: null,
     };
+    const hostTeam = settings.teamCount > 0 ? 0 : null;
     room.members.set(identity.playerId, {
       playerId: identity.playerId,
       username,
-      color: this.pickColor(room),
+      color: hostTeam !== null ? teamColor(hostTeam) : this.pickColor(room),
       avatar: identity.avatar ?? '',
       shape: identity.shape ?? PlayerShape.Round,
       pattern: identity.pattern ?? PlayerPattern.Solid,
       isHost: true,
       isReady: true, // the host is always "ready"
       isBot: false,
+      team: hostTeam,
       connected: true,
       socketId: null,
       disconnectedAt: null,
@@ -143,16 +147,18 @@ export class RoomService extends EventEmitter<RoomServiceEvents> {
     }
 
     const username = sanitizeUsername(identity.username) ?? `Player${room.members.size + 1}`;
+    const joinTeam = room.settings.teamCount > 0 ? this.balancedTeam(room) : null;
     room.members.set(identity.playerId, {
       playerId: identity.playerId,
       username,
-      color: this.pickColor(room),
+      color: joinTeam !== null ? teamColor(joinTeam) : this.pickColor(room),
       avatar: identity.avatar ?? '',
       shape: identity.shape ?? PlayerShape.Round,
       pattern: identity.pattern ?? PlayerPattern.Solid,
       isHost: false,
       isReady: false,
       isBot: false,
+      team: joinTeam,
       connected: true,
       socketId,
       disconnectedAt: null,
@@ -209,6 +215,8 @@ export class RoomService extends EventEmitter<RoomServiceEvents> {
 
   setColor(roomCode: string, playerId: string, color: string): RoomView {
     const { room, member } = this.member(roomCode, playerId);
+    // In team modes the colour is fixed by the team; ignore manual picks.
+    if (room.settings.teamCount > 0) return this.toView(room);
     if (!PLAYER_COLORS.includes(color as (typeof PLAYER_COLORS)[number])) {
       throw RoomErrors.invalidInput('Unknown colour.');
     }
@@ -217,6 +225,28 @@ export class RoomService extends EventEmitter<RoomServiceEvents> {
     member.color = color;
     this.emit('room:update', roomCode);
     return this.toView(room);
+  }
+
+  /** Assign a member to a team (team modes only); colour follows the team. */
+  setTeam(roomCode: string, playerId: string, team: number): RoomView {
+    const { room, member } = this.member(roomCode, playerId);
+    if (room.settings.teamCount <= 0) throw RoomErrors.invalidInput('This room is not in team mode.');
+    if (team < 0 || team >= room.settings.teamCount) throw RoomErrors.invalidInput('Unknown team.');
+    member.team = team;
+    member.color = teamColor(team);
+    this.emit('room:update', roomCode);
+    return this.toView(room);
+  }
+
+  /** Pick the least-populated team (ties → lowest index) for auto-balancing. */
+  private balancedTeam(room: Room): number {
+    const counts = new Array<number>(room.settings.teamCount).fill(0);
+    for (const m of room.members.values()) {
+      if (m.team !== null && m.team < counts.length) counts[m.team] = (counts[m.team] ?? 0) + 1;
+    }
+    let best = 0;
+    for (let i = 1; i < counts.length; i += 1) if (counts[i]! < counts[best]!) best = i;
+    return best;
   }
 
   setAvatar(roomCode: string, playerId: string, avatar: string): RoomView {
@@ -253,10 +283,36 @@ export class RoomService extends EventEmitter<RoomServiceEvents> {
     const room = this.require(roomCode);
     this.assertHost(room, playerId);
     if (room.status !== RoomStatus.Lobby) throw RoomErrors.alreadyStarted();
+    const prevTeamCount = room.settings.teamCount;
     room.settings = sanitizeSettings(room.settings, patch);
-    // Trim members if the player limit was lowered below the current count.
+    // If the team configuration changed, re-assign teams + colours.
+    if (room.settings.teamCount !== prevTeamCount) this.reassignTeams(room);
     this.emit('room:update', roomCode);
     return this.toView(room);
+  }
+
+  /** Reconcile every member's team/colour after a team-count change. */
+  private reassignTeams(room: Room): void {
+    const count = room.settings.teamCount;
+    if (count <= 0) {
+      // Back to free-for-all: clear teams and hand out unique colours.
+      const used = new Set<string>();
+      for (const m of room.members.values()) {
+        m.team = null;
+        const color = PLAYER_COLORS.find((c) => !used.has(c)) ?? PLAYER_COLORS[0]!;
+        used.add(color);
+        m.color = color;
+      }
+      return;
+    }
+    // Round-robin members across teams for a balanced split.
+    let i = 0;
+    for (const m of room.members.values()) {
+      const team = m.team !== null && m.team < count ? m.team : i % count;
+      m.team = team;
+      m.color = teamColor(team);
+      i += 1;
+    }
   }
 
   kick(roomCode: string, playerId: string, targetId: string): RoomView {
@@ -330,6 +386,7 @@ export class RoomService extends EventEmitter<RoomServiceEvents> {
       isHost: m.isHost,
       isReady: m.isReady,
       isBot: m.isBot,
+      team: m.team,
       connected: m.connected,
     }));
     return {

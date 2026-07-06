@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { MAP_SIZES, MapTheme, SPAWN_TERRITORY_SIZES, type RoomSettings } from '@paperpiece/shared';
+import { MAP_SIZES, MapTheme, SPAWN_TERRITORY_SIZES, TEAM_COUNTS, type RoomSettings } from '@paperpiece/shared';
 import { BOARD_THEMES } from '@/lib/theme';
 
 interface Props {
@@ -84,6 +84,15 @@ export function SettingsPanel({ settings, isHost, onChange }: Props) {
           }`}
         >
           <Range disabled={disabled} min={0} max={900} step={30} value={local.matchDurationSeconds} onChange={(v) => set({ matchDurationSeconds: v })} />
+        </Field>
+
+        <Field label="Teams">
+          <Select
+            disabled={disabled}
+            value={local.teamCount}
+            onChange={(v) => set({ teamCount: v })}
+            options={TEAM_COUNTS.map((n) => ({ value: n, label: n === 0 ? 'Free-for-all' : `${n} teams` }))}
+          />
         </Field>
       </div>
 

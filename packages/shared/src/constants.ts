@@ -76,6 +76,18 @@ export type PlayerColor = (typeof PLAYER_COLORS)[number];
 /** Socket.IO namespace/rooms helper prefixes. */
 export const SOCKET_ROOM_PREFIX = 'room:' as const;
 
+/** Allowed team counts (0 = free-for-all, no teams). */
+export const TEAM_COUNTS = [0, 2, 3, 4] as const;
+/** Per-team display metadata; index = team number. */
+export const TEAM_META = [
+  { label: 'Blue', color: '#3a86ff' },
+  { label: 'Red', color: '#ef476f' },
+  { label: 'Green', color: '#06d6a0' },
+  { label: 'Gold', color: '#ffd166' },
+] as const;
+/** Team colour for a team index (falls back to grey). */
+export const teamColor = (team: number): string => TEAM_META[team]?.color ?? '#888888';
+
 /** XP required per battle-pass level. */
 export const XP_PER_LEVEL = 1000 as const;
 

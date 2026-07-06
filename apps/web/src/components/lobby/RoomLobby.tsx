@@ -2,7 +2,13 @@
 
 import { motion } from 'framer-motion';
 import { useState } from 'react';
-import { RoomStatus, type PlayerPattern, type PlayerShape, type RoomSettings } from '@paperpiece/shared';
+import {
+  RoomStatus,
+  TEAM_META,
+  type PlayerPattern,
+  type PlayerShape,
+  type RoomSettings,
+} from '@paperpiece/shared';
 import { useIdentityStore } from '@/stores/identityStore';
 import { useRoomStore } from '@/stores/roomStore';
 import { toast } from '@/stores/toastStore';
@@ -14,6 +20,7 @@ interface Actions {
   leaveRoom: () => Promise<void>;
   setReady: (ready: boolean) => Promise<void>;
   setColor: (color: string) => Promise<void>;
+  setTeam: (team: number) => Promise<void>;
   setAvatar: (avatar: string) => Promise<void>;
   setShape: (shape: PlayerShape) => Promise<void>;
   setPattern: (pattern: PlayerPattern) => Promise<void>;
@@ -36,6 +43,7 @@ export function RoomLobby({ actions }: { actions: Actions }) {
 
   const me = room.members.find((m) => m.id === playerId);
   const isHost = room.hostId === playerId;
+  const teamCount = room.settings.teamCount;
   const usedColors = new Set(room.members.filter((m) => m.id !== playerId).map((m) => m.color));
   const everyoneReady = room.members.every((m) => m.isReady);
   const starting = room.status !== RoomStatus.Lobby;
@@ -104,6 +112,14 @@ export function RoomLobby({ actions }: { actions: Actions }) {
                   {m.username}
                   {m.id === playerId && <span className="text-[var(--color-ink-soft)]"> (you)</span>}
                 </span>
+                {teamCount > 0 && m.team != null && (
+                  <span
+                    className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase"
+                    style={{ backgroundColor: `${TEAM_META[m.team]?.color}22`, color: TEAM_META[m.team]?.color }}
+                  >
+                    {TEAM_META[m.team]?.label}
+                  </span>
+                )}
                 {m.isHost && (
                   <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-300">
                     Host
@@ -167,11 +183,38 @@ export function RoomLobby({ actions }: { actions: Actions }) {
               </button>
             )}
           </div>
+
+          {teamCount > 0 && (
+            <div>
+              <p className="mb-2 text-xs text-[var(--color-ink-soft)]">Team</p>
+              <div className="flex flex-wrap gap-2">
+                {TEAM_META.slice(0, teamCount).map((t, i) => {
+                  const mine = me?.team === i;
+                  return (
+                    <button
+                      key={t.label}
+                      onClick={() => void actions.setTeam(i)}
+                      style={{
+                        backgroundColor: mine ? t.color : `${t.color}22`,
+                        color: mine ? '#0b0f1a' : t.color,
+                      }}
+                      className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition hover:brightness-110 ${
+                        mine ? 'ring-2 ring-white/60' : ''
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         <CosmeticsPanel
           me={me}
           usedColors={usedColors}
+          hideColor={teamCount > 0}
           onColor={(c) => void actions.setColor(c)}
           onAvatar={(a) => void actions.setAvatar(a)}
           onShape={(s) => void actions.setShape(s)}

@@ -14,6 +14,8 @@ interface Props {
   onAvatar: (avatar: string) => void;
   onShape: (shape: PlayerShape) => void;
   onPattern: (pattern: PlayerPattern) => void;
+  /** In team mode the colour is fixed by the team, so hide the colour picker. */
+  hideColor?: boolean;
 }
 
 const PATTERNS: { p: PlayerPattern; label: string; css: string }[] = [
@@ -41,7 +43,7 @@ const PATTERNS: { p: PlayerPattern; label: string; css: string }[] = [
 ];
 
 /** The "You" panel: avatar gallery, ball shape, and colour picker. */
-export function CosmeticsPanel({ me, usedColors, onColor, onAvatar, onShape, onPattern }: Props) {
+export function CosmeticsPanel({ me, usedColors, onColor, onAvatar, onShape, onPattern, hideColor }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
@@ -141,26 +143,30 @@ export function CosmeticsPanel({ me, usedColors, onColor, onAvatar, onShape, onP
         })}
       </div>
 
-      {/* Colour */}
-      <p className="mb-2 text-xs text-[var(--color-ink-soft)]">Colour</p>
-      <div className="flex flex-wrap gap-2">
-        {PLAYER_COLORS.map((c) => {
-          const taken = usedColors.has(c);
-          const mine = me?.color === c;
-          return (
-            <button
-              key={c}
-              disabled={taken && !mine}
-              onClick={() => onColor(c)}
-              style={{ backgroundColor: c }}
-              className={`h-8 w-8 rounded-lg transition ${
-                mine ? 'ring-2 ring-white ring-offset-2 ring-offset-[var(--color-canvas)]' : ''
-              } ${taken && !mine ? 'cursor-not-allowed opacity-25' : 'hover:scale-110'}`}
-              aria-label={`colour ${c}`}
-            />
-          );
-        })}
-      </div>
+      {/* Colour (hidden in team mode — the team decides the colour) */}
+      {!hideColor && (
+        <>
+          <p className="mb-2 text-xs text-[var(--color-ink-soft)]">Colour</p>
+          <div className="flex flex-wrap gap-2">
+            {PLAYER_COLORS.map((c) => {
+              const taken = usedColors.has(c);
+              const mine = me?.color === c;
+              return (
+                <button
+                  key={c}
+                  disabled={taken && !mine}
+                  onClick={() => onColor(c)}
+                  style={{ backgroundColor: c }}
+                  className={`h-8 w-8 rounded-lg transition ${
+                    mine ? 'ring-2 ring-white ring-offset-2 ring-offset-[var(--color-canvas)]' : ''
+                  } ${taken && !mine ? 'cursor-not-allowed opacity-25' : 'hover:scale-110'}`}
+                  aria-label={`colour ${c}`}
+                />
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }

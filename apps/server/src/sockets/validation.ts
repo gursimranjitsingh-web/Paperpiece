@@ -65,6 +65,7 @@ export const joinRoomSchema = z.object({
 export const updateSettingsSchema = z.object({ settings: settingsPatch });
 export const setReadySchema = z.object({ ready: z.boolean() });
 export const setColorSchema = z.object({ color: z.string().regex(/^#[0-9a-fA-F]{6}$/) });
+export const setTeamSchema = z.object({ team: z.number().int().min(0).max(3) });
 export const setAvatarSchema = z.object({ avatar: avatarString });
 export const setShapeSchema = z.object({ shape: z.nativeEnum(PlayerShape) });
 export const setPatternSchema = z.object({ pattern: z.nativeEnum(PlayerPattern) });

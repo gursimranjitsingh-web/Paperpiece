@@ -13,8 +13,8 @@ export default function HomePage() {
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[var(--color-canvas)]" />
       <div className="pointer-events-none absolute left-1/2 top-[-10%] h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(6,214,160,0.18),transparent)] blur-2xl" />
 
-      {/* Top bar */}
-      <header className="relative z-10 mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
+      {/* Top bar (above the hero so the settings popover isn't covered by it) */}
+      <header className="relative z-30 mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
         <div className="flex items-center gap-2.5">
           <BrandMark size={30} />
           <span className="text-lg font-black tracking-tight">Paperpiece</span>

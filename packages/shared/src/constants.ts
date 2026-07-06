@@ -99,6 +99,34 @@ export const DAILY_MISSIONS: readonly MissionDef[] = [
   { id: 'win1', label: 'Win a match', metric: 'wins', target: 1, xp: 300 },
 ] as const;
 
+/** How an achievement is unlocked — evaluated against cumulative + per-match stats. */
+export type AchievementMetric =
+  | 'wins' // total wins
+  | 'gamesPlayed' // total matches
+  | 'totalKills' // lifetime kills
+  | 'matchKills' // kills in a single match
+  | 'matchTerritory'; // best territory % in a single match
+
+export interface AchievementDef {
+  id: string;
+  label: string;
+  description: string;
+  icon: string;
+  metric: AchievementMetric;
+  threshold: number;
+}
+
+/** Permanent, one-time achievements shown on the profile. */
+export const ACHIEVEMENTS: readonly AchievementDef[] = [
+  { id: 'first_win', label: 'First Blood', description: 'Win your first match', icon: '🥇', metric: 'wins', threshold: 1 },
+  { id: 'veteran', label: 'Veteran', description: 'Play 10 matches', icon: '🎖️', metric: 'gamesPlayed', threshold: 10 },
+  { id: 'slayer', label: 'Slayer', description: 'Eliminate 25 rivals total', icon: '⚔️', metric: 'totalKills', threshold: 25 },
+  { id: 'triple', label: 'Triple Threat', description: 'Get 3 kills in one match', icon: '🔪', metric: 'matchKills', threshold: 3 },
+  { id: 'rampage', label: 'Rampage', description: 'Get 6 kills in one match', icon: '💀', metric: 'matchKills', threshold: 6 },
+  { id: 'dominator', label: 'Dominator', description: 'Hold 50% of the board', icon: '🌐', metric: 'matchTerritory', threshold: 50 },
+  { id: 'landlord', label: 'Landlord', description: 'Hold 75% of the board', icon: '🏰', metric: 'matchTerritory', threshold: 75 },
+] as const;
+
 /** Max trail length before a player is force-killed (anti-grief / safety valve). */
 export const MAX_TRAIL_LENGTH = 4000 as const;
 
@@ -111,7 +139,16 @@ export const POWERUP_DURATIONS_MS = {
   SPEED_BOOST: 5000,
   FREEZE: 2500,
   SHRINK_TERRITORY: 0, // instant effect
+  GHOST: 5000,
+  MAGNET: 6000,
 } as const;
 export const SPEED_BOOST_MULTIPLIER = 1.8 as const;
 /** Fraction of each rival's territory removed by a Shrink pickup. */
 export const SHRINK_FRACTION = 0.15 as const;
+/** Chebyshev radius (cells) within which a Magnet pulls in drops. */
+export const MAGNET_RADIUS = 4 as const;
+
+/** Combo scoring: chained captures within this window escalate a bonus. */
+export const COMBO_WINDOW_MS = 3500 as const;
+/** Bonus points per gained cell, scaled by (combo - 1). */
+export const COMBO_BONUS_PER_CELL = 0.5 as const;

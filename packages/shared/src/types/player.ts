@@ -40,6 +40,13 @@ export interface Player {
   /** Number of owned cells. */
   territorySize: number;
 
+  /** Current capture combo count (chained captures within the combo window). */
+  combo: number;
+  /** Epoch ms at which the current combo lapses. */
+  comboExpiresAt: number;
+  /** Accumulated combo bonus points folded into {@link score}. */
+  bonusScore: number;
+
   /** Ordered list of trail cells laid since leaving territory. */
   trail: GridPoint[];
 
@@ -75,6 +82,8 @@ export interface PlayerSnapshot {
   kills: number;
   deaths: number;
   territorySize: number;
+  /** Live capture combo (0 when not on a streak). */
+  combo: number;
   trail: GridPoint[];
   activePowerUps: PowerUpType[];
 }

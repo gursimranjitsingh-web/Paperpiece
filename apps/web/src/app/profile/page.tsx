@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
+import { ACHIEVEMENTS } from '@paperpiece/shared';
 import { api } from '@/lib/api';
 import { Avatar } from '@/components/Avatar';
 import { useIdentityStore } from '@/stores/identityStore';
@@ -103,6 +104,34 @@ export default function ProfilePage() {
                   </span>
                 </li>
               ))}
+            </ul>
+
+            <h2 className="mb-3 mt-8 text-sm font-bold uppercase tracking-wider text-[var(--color-ink-soft)]">
+              Achievements
+            </h2>
+            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {ACHIEVEMENTS.map((a) => {
+                const unlocked = p.achievements.includes(a.id);
+                return (
+                  <li
+                    key={a.id}
+                    title={a.description}
+                    className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 ${
+                      unlocked
+                        ? 'border-[var(--color-accent)]/40 bg-[var(--color-accent)]/10'
+                        : 'border-white/10 bg-white/5 opacity-50'
+                    }`}
+                  >
+                    <span className={`text-2xl ${unlocked ? '' : 'grayscale'}`}>{a.icon}</span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold">{a.label}</span>
+                      <span className="block truncate text-xs text-[var(--color-ink-soft)]">
+                        {unlocked ? 'Unlocked' : a.description}
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
 
             <h2 className="mb-3 mt-8 text-sm font-bold uppercase tracking-wider text-[var(--color-ink-soft)]">

@@ -4,8 +4,11 @@ import { useFrame } from '@react-three/fiber';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { gameBuffer } from '@/lib/gameBuffer';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 const WHITE = new THREE.Color('#ffffff');
+/** Seconds a newly-captured cell stays lit during the flood-in animation. */
+const FLASH_SECONDS = 0.5;
 
 /**
  * The whole territory/trail grid rendered as a single {@link THREE.InstancedMesh}
@@ -25,6 +28,8 @@ export function CellGrid({
 }) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const count = width * height;
+  // Cells currently mid flood-in, mapped to the clock time their flash ends.
+  const flashUntil = useRef(new Map<number, number>());
   const BOARD_COLOR = useMemo(() => new THREE.Color(boardColor), [boardColor]);
 
   // Full-size cells (no inter-cell gap) so territory reads as a smooth painted
@@ -90,23 +95,51 @@ export function CellGrid({
     gameBuffer.fullRepaint = true; // force a colour repaint on the next frame
   }, [width, height, count]);
 
-  useFrame(() => {
+  useFrame(({ clock }) => {
     const mesh = meshRef.current;
     if (!mesh || gameBuffer.width !== width) return;
     const c = new THREE.Color();
+    const now = clock.elapsedTime;
+    const flashes = flashUntil.current;
+    const animate = !useSettingsStore.getState().reducedMotion;
+    let touched = false;
+
+    const isFreshTerritory = (idx: number): boolean =>
+      !!gameBuffer.owners[idx] && !gameBuffer.trails[idx];
 
     if (gameBuffer.fullRepaint) {
       for (let i = 0; i < count; i += 1) mesh.setColorAt(i, colorFor(i, c));
       gameBuffer.fullRepaint = false;
       gameBuffer.dirty = [];
-      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      flashes.clear();
+      touched = true;
     } else if (gameBuffer.dirty.length) {
       for (const idx of gameBuffer.dirty) {
-        if (idx >= 0 && idx < count) mesh.setColorAt(idx, colorFor(idx, c));
+        if (idx < 0 || idx >= count) continue;
+        mesh.setColorAt(idx, colorFor(idx, c));
+        // Newly-owned territory kicks off a flood-in flash.
+        if (animate && isFreshTerritory(idx)) flashes.set(idx, now + FLASH_SECONDS);
       }
       gameBuffer.dirty = [];
-      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      touched = true;
     }
+
+    // Advance active flood-in flashes: lerp the cell toward white by how much
+    // of its flash window remains, then settle to the normal colour.
+    if (flashes.size) {
+      for (const [idx, until] of flashes) {
+        const remaining = (until - now) / FLASH_SECONDS;
+        if (remaining <= 0) {
+          mesh.setColorAt(idx, colorFor(idx, c));
+          flashes.delete(idx);
+        } else {
+          mesh.setColorAt(idx, colorFor(idx, c).lerp(WHITE, remaining * 0.8));
+        }
+      }
+      touched = true;
+    }
+
+    if (touched && mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   });
 
   return <instancedMesh ref={meshRef} args={[geometry, material, count]} frustumCulled={false} />;

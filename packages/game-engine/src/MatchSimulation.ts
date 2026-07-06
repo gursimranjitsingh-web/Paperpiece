@@ -1,7 +1,10 @@
 import {
   BASE_MOVE_CELLS_PER_SEC,
+  COMBO_BONUS_PER_CELL,
+  COMBO_WINDOW_MS,
   DeathCause,
   Direction,
+  MAGNET_RADIUS,
   MAX_TRAIL_LENGTH,
   POWERUP_DURATIONS_MS,
   POWERUP_MAX_DROPS,
@@ -181,13 +184,18 @@ export class MatchSimulation {
     // 2. Head-on / same-cell resolution among survivors.
     this.resolveCollisions(deaths);
 
+    // 2.5. Magnet pickup: survivors vacuum nearby drops.
+    this.applyMagnets();
+
     // 3. Respawns.
     if (this.settings.respawnSeconds > 0) this.processRespawns(now);
 
     // 4. Scores + leaderboard.
     for (const p of this.players.values()) {
       p.territorySize = this.grid.territorySizeOf(p.id);
-      p.score = computeScore(p.territorySize, p.kills);
+      // Lapse an expired combo so it stops showing / accumulating.
+      if (p.combo > 0 && now > p.comboExpiresAt) p.combo = 0;
+      p.score = computeScore(p.territorySize, p.kills) + Math.round(p.bonusScore);
     }
     this.lastLeaderboard = computeLeaderboard(this.scorable(), this.grid);
 
@@ -290,8 +298,9 @@ export class MatchSimulation {
       if (victim && victim.alive) this.kill(victim, DeathCause.EnemyTrail, p.id, deaths);
     }
 
-    // Crossing your own trail is fatal — unless it's part of the immune neck.
-    if (trailOwner === p.id && !this.inNeck(p, x, y)) {
+    // Crossing your own trail is fatal — unless it's part of the immune neck,
+    // or the player is phased (Ghost) and passes straight through.
+    if (trailOwner === p.id && !this.inNeck(p, x, y) && !this.hasPower(p, PowerUpType.Ghost)) {
       this.kill(p, DeathCause.SelfTrail, null, deaths);
       return true;
     }
@@ -304,6 +313,10 @@ export class MatchSimulation {
         p.trail = [];
         const gained = this.grid.territorySizeOf(p.id) - before;
         if (gained > 0) {
+          // Combo: chained captures within the window escalate a bonus.
+          p.combo = this.now <= p.comboExpiresAt ? p.combo + 1 : 1;
+          p.comboExpiresAt = this.now + COMBO_WINDOW_MS;
+          if (p.combo > 1) p.bonusScore += gained * (p.combo - 1) * COMBO_BONUS_PER_CELL;
           captures.push({
             playerId: p.id,
             cellsGained: gained,
@@ -394,6 +407,29 @@ export class MatchSimulation {
           if (other.id !== collector.id && other.alive) this.grid.shrinkPlayer(other.id, SHRINK_FRACTION);
         }
         break;
+      case PowerUpType.Ghost:
+        collector.activePowerUps[PowerUpType.Ghost] = this.now + POWERUP_DURATIONS_MS.GHOST;
+        break;
+      case PowerUpType.Magnet:
+        collector.activePowerUps[PowerUpType.Magnet] = this.now + POWERUP_DURATIONS_MS.MAGNET;
+        break;
+    }
+  }
+
+  /** While Magnet is active, vacuum up any drops within range each tick. */
+  private applyMagnets(): void {
+    if (this.powerUps.size === 0) return;
+    for (const p of this.players.values()) {
+      if (!p.alive || !this.hasPower(p, PowerUpType.Magnet)) continue;
+      for (const [id, drop] of this.powerUps) {
+        const dx = Math.abs(drop.cell.x - p.cell.x);
+        const dy = Math.abs(drop.cell.y - p.cell.y);
+        if (Math.max(dx, dy) <= MAGNET_RADIUS) {
+          this.powerUps.delete(id);
+          this.powerUpDirty = true;
+          this.applyPowerUp(p, drop.type);
+        }
+      }
     }
   }
 
@@ -427,9 +463,10 @@ export class MatchSimulation {
     for (const group of byCell.values()) {
       if (group.length < 2) continue;
       // A player standing in their own territory is safe; intruders die.
+      // Phased (Ghost) players are immune to head-on collisions.
       for (const p of group) {
         const safe = this.grid.getOwner(p.cell.x, p.cell.y) === p.id;
-        if (!safe) this.kill(p, DeathCause.HeadOn, null, deaths);
+        if (!safe && !this.hasPower(p, PowerUpType.Ghost)) this.kill(p, DeathCause.HeadOn, null, deaths);
       }
     }
   }
@@ -450,6 +487,8 @@ export class MatchSimulation {
     victim.direction = Direction.None;
     victim.pendingDirection = Direction.None;
     victim.moveProgress = 0;
+    victim.combo = 0; // dying breaks the capture streak
+    victim.comboExpiresAt = 0;
     victim.trail = [];
     // Remove trail + territory (frees the board for others).
     this.grid.clearPlayer(victim.id);
@@ -575,6 +614,9 @@ export class MatchSimulation {
       kills: 0,
       deaths: 0,
       territorySize: 0,
+      combo: 0,
+      comboExpiresAt: 0,
+      bonusScore: 0,
       trail: [],
       activePowerUps: {},
       lastInputTick: 0,
@@ -609,6 +651,7 @@ export class MatchSimulation {
       kills: p.kills,
       deaths: p.deaths,
       territorySize: p.territorySize,
+      combo: this.now <= p.comboExpiresAt ? p.combo : 0,
       trail: p.trail,
       activePowerUps: this.powerUpTypes.filter((t) => this.hasPower(p, t)),
     }));

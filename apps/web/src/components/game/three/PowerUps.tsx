@@ -13,6 +13,8 @@ const POWERUP_META: Record<PowerUpType, { emoji: string; color: string }> = {
   [PowerUpType.SpeedBoost]: { emoji: '⚡', color: '#ffd166' },
   [PowerUpType.Freeze]: { emoji: '❄️', color: '#9bf6ff' },
   [PowerUpType.ShrinkTerritory]: { emoji: '✂️', color: '#ef476f' },
+  [PowerUpType.Ghost]: { emoji: '👻', color: '#b39ddb' },
+  [PowerUpType.Magnet]: { emoji: '🧲', color: '#ff9f1c' },
 };
 
 /** Render a coloured badge + emoji to a canvas → a texture usable in the scene. */

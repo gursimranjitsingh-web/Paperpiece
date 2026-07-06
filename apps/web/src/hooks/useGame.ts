@@ -135,9 +135,13 @@ export function useGame() {
         fx.shake(0.6);
       }
     };
-    const onCapture = (evt: { playerId: string }): void => {
+    const onCapture = (evt: { playerId: string; cellsGained?: number }): void => {
       const p = gameBuffer.players.get(evt.playerId);
-      if (p) fx.burst(p.position.x, p.position.y, p.color, 10, 4);
+      if (p) {
+        // Bigger captures throw a bigger burst (capped so it stays readable).
+        const n = Math.min(40, 10 + Math.floor((evt.cellsGained ?? 0) / 6));
+        fx.burst(p.position.x, p.position.y, p.color, n, 4 + Math.min(6, (evt.cellsGained ?? 0) / 40));
+      }
       if (evt.playerId === id.playerId) {
         sound.play('capture');
         fx.shake(0.25);

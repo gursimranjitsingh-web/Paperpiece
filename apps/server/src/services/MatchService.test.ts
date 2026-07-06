@@ -64,6 +64,13 @@ describe('persistence: recordMatch → stats + leaderboard + history', () => {
     expect(profile.highestTerritory).toBe(4120);
     expect(profile.level).toBeGreaterThanOrEqual(1);
 
+    // Achievements unlocked by this match: first win + 3 kills in a match.
+    // Not yet: dominator (needs 50% territory), veteran (10 games), slayer (25 kills).
+    expect(profile.achievements).toContain('first_win');
+    expect(profile.achievements).toContain('triple');
+    expect(profile.achievements).not.toContain('dominator');
+    expect(profile.achievements).not.toContain('veteran');
+
     // Bots are recorded in the match but never persisted as users.
     expect(await users.getProfile('bot_x')).toBeNull();
 

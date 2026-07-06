@@ -3,6 +3,7 @@ import {
   BASE_MOVE_CELLS_PER_SEC,
   DeathCause,
   Direction,
+  PowerUpType,
   SERVER_TICK_RATE,
   defaultRoomSettings,
   directionToAngle,
@@ -10,6 +11,22 @@ import {
   type RoomSettings,
 } from '@paperpiece/shared';
 import { MatchSimulation, type SeedPlayer } from './MatchSimulation';
+import { computeScore } from './Score';
+
+/** The proven capture loop from the movement test: encloses a pocket and
+ *  returns to territory, yielding exactly one capture. */
+const CAPTURE_LOOP: Direction[] = [
+  Direction.Up,
+  Direction.Up,
+  Direction.Up,
+  Direction.Up,
+  Direction.Up,
+  Direction.Right,
+  Direction.Right,
+  Direction.Down,
+  Direction.Down,
+  Direction.Down,
+];
 
 /** Speed that yields exactly one cell per tick — makes stepping deterministic. */
 const ONE_CELL_PER_TICK = SERVER_TICK_RATE / BASE_MOVE_CELLS_PER_SEC;
@@ -138,5 +155,66 @@ describe('MatchSimulation — death, respawn & scoring', () => {
     expect(trailCells).toBeGreaterThan(0);
     expect(playerOf(sim, 'p1').alive).toBe(true);
     // (Enemy-trail cutting + kill credit is verified in the server integration test.)
+  });
+});
+
+describe('MatchSimulation — combo scoring', () => {
+  it('starts a combo on the first capture', () => {
+    const sim = new MatchSimulation('COMBO1', settings(), solo(), 0);
+    const t = { now: 0 };
+    for (const d of CAPTURE_LOOP) step(sim, d, t);
+    expect(playerOf(sim, 'p1').combo).toBe(1);
+  });
+
+  it('escalates the bonus on a chained capture within the window', () => {
+    const sim = new MatchSimulation('COMBO2', settings(), solo(), 0);
+    const t = { now: 0 };
+    // Pretend the player is already mid-combo so the next capture chains.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p: any = (sim as any).players.get('p1');
+    p.combo = 1;
+    p.comboExpiresAt = Number.MAX_SAFE_INTEGER;
+
+    for (const d of CAPTURE_LOOP) step(sim, d, t);
+
+    const snap = playerOf(sim, 'p1');
+    expect(snap.combo).toBe(2);
+    expect(p.bonusScore).toBeGreaterThan(0);
+    // Score exceeds the plain territory+kills formula thanks to the bonus.
+    expect(snap.score).toBeGreaterThan(computeScore(snap.territorySize, snap.kills));
+  });
+
+  it('lapses the combo after the window elapses', () => {
+    const sim = new MatchSimulation('COMBO3', settings(), solo(), 0);
+    const t = { now: 0 };
+    for (const d of CAPTURE_LOOP) step(sim, d, t);
+    expect(playerOf(sim, 'p1').combo).toBe(1);
+
+    // Idle well past the combo window, then tick once.
+    t.now += 5000;
+    sim.tick(t.now);
+    expect(playerOf(sim, 'p1').combo).toBe(0);
+  });
+});
+
+describe('MatchSimulation — Ghost power-up', () => {
+  it('lets a phased player cross their own trail without dying', () => {
+    const sim = new MatchSimulation('GHOST1', settings(), solo(), 0);
+    const t = { now: 0 };
+    // Grant Ghost for the duration of the run.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p: any = (sim as any).players.get('p1');
+    p.activePowerUps[PowerUpType.Ghost] = Number.MAX_SAFE_INTEGER;
+
+    // Same self-crossing path that kills a normal player.
+    step(sim, Direction.Up, t); // 15,14
+    step(sim, Direction.Up, t); // 15,13
+    step(sim, Direction.Up, t); // 15,12 trail
+    step(sim, Direction.Up, t); // 15,11 trail
+    step(sim, Direction.Right, t); // 16,11 trail
+    step(sim, Direction.Down, t); // 16,12 trail
+    step(sim, Direction.Left, t); // 15,12 == own trail → would kill, but phased
+
+    expect(playerOf(sim, 'p1').alive).toBe(true);
   });
 });

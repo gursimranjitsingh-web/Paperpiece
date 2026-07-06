@@ -1,7 +1,50 @@
-import { DAILY_MISSIONS, territoryPercent, type MatchResult } from '@paperpiece/shared';
+import {
+  ACHIEVEMENTS,
+  DAILY_MISSIONS,
+  territoryPercent,
+  type AchievementMetric,
+  type MatchResult,
+} from '@paperpiece/shared';
 import { isDatabaseConnected } from '../database/connection.js';
 import { logger } from '../config/logger.js';
 import { Leaderboard, Match, User } from '../models/index.js';
+
+/** Per-match stats used to evaluate single-match achievement metrics. */
+interface MatchAchievementStats {
+  matchKills: number;
+  matchTerritory: number;
+}
+
+/**
+ * Evaluate achievements against a player's freshly-updated cumulative stats plus
+ * this match's per-player numbers, and persist any newly-unlocked ones.
+ */
+async function awardAchievements(playerId: string, match: MatchAchievementStats): Promise<void> {
+  const u = await User.findOne({ playerId });
+  if (!u) return;
+  const already: string[] = (u.get('achievements') as string[]) ?? [];
+  const value = (metric: AchievementMetric): number => {
+    switch (metric) {
+      case 'wins':
+        return u.get('wins') ?? 0;
+      case 'gamesPlayed':
+        return u.get('gamesPlayed') ?? 0;
+      case 'totalKills':
+        return u.get('kills') ?? 0;
+      case 'matchKills':
+        return match.matchKills;
+      case 'matchTerritory':
+        return match.matchTerritory;
+    }
+  };
+  const earned = ACHIEVEMENTS.filter(
+    (a) => !already.includes(a.id) && value(a.metric) >= a.threshold,
+  ).map((a) => a.id);
+  if (earned.length > 0) {
+    await User.updateOne({ playerId }, { $addToSet: { achievements: { $each: earned } } });
+    logger.info({ playerId, earned }, 'achievements unlocked');
+  }
+}
 
 interface MissionStats {
   games: number;
@@ -134,6 +177,10 @@ export async function recordMatch(params: RecordMatchParams): Promise<void> {
             kills: p.kills,
             wins: isWinner ? 1 : 0,
             bestTerritory: p.finalTerritoryPercent,
+          });
+          await awardAchievements(p.playerId, {
+            matchKills: p.kills,
+            matchTerritory: p.finalTerritoryPercent,
           });
         }),
     );

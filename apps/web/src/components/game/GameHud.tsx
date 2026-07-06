@@ -12,6 +12,8 @@ const POWERUP_META: Record<PowerUpType, { icon: string; label: string; color: st
   [PowerUpType.SpeedBoost]: { icon: '⚡', label: 'Speed', color: '#ffd166' },
   [PowerUpType.Freeze]: { icon: '❄️', label: 'Freeze', color: '#9bf6ff' },
   [PowerUpType.ShrinkTerritory]: { icon: '✂️', label: 'Shrink', color: '#ef476f' },
+  [PowerUpType.Ghost]: { icon: '👻', label: 'Ghost', color: '#b39ddb' },
+  [PowerUpType.Magnet]: { icon: '🧲', label: 'Magnet', color: '#ff9f1c' },
 };
 
 /** Formats seconds as m:ss, or ∞ when the match is untimed. */
@@ -32,7 +34,9 @@ export function GameHud({ playerId, onExit }: { playerId: string; onExit?: () =>
   const roomCode = useRoomStore((s) => s.room?.roomCode);
   const pingMs = useRoomStore((s) => s.pingMs);
   useGameStore((s) => s.frame); // re-read active power-ups each tick
-  const myPowers = gameBuffer.players.get(playerId)?.activePowerUps ?? [];
+  const meBuf = gameBuffer.players.get(playerId);
+  const myPowers = meBuf?.activePowerUps ?? [];
+  const combo = meBuf?.combo ?? 0;
 
   return (
     <>
@@ -103,6 +107,22 @@ export function GameHud({ playerId, onExit }: { playerId: string; onExit?: () =>
       <div className="pointer-events-auto absolute bottom-4 right-4">
         <SettingsMenu placement="top" />
       </div>
+
+      {/* Combo streak: a punchy centre badge that pops while chaining captures. */}
+      <AnimatePresence>
+        {combo >= 2 && (
+          <motion.div
+            key={combo}
+            initial={{ opacity: 0, scale: 0.6, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 16 }}
+            className="pointer-events-none absolute left-1/2 top-24 -translate-x-1/2 rounded-full border border-orange-400/50 bg-black/50 px-4 py-1.5 text-center backdrop-blur"
+          >
+            <span className="text-lg font-black text-orange-300">🔥 {combo}× COMBO</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Top-center: kill feed */}
       <div className="pointer-events-none absolute left-1/2 top-4 flex w-72 -translate-x-1/2 flex-col items-center gap-1">

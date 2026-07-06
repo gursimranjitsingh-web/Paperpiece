@@ -27,6 +27,8 @@ export interface PublicProfile {
   winRate: number;
   selectedSkin: string;
   missions: MissionProgress[];
+  /** Ids of unlocked achievements (see ACHIEVEMENTS catalog). */
+  achievements: string[];
 }
 
 /** Derive level from XP. */
@@ -74,6 +76,7 @@ export async function getProfile(playerId: string): Promise<PublicProfile | null
     winRate:
       (u.gamesPlayed ?? 0) > 0 ? Math.round(((u.wins ?? 0) / (u.gamesPlayed ?? 1)) * 1000) / 10 : 0,
     selectedSkin: u.selectedSkin ?? 'default',
+    achievements: (u.achievements as string[]) ?? [],
   };
 }
 

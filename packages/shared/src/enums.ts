@@ -54,6 +54,10 @@ export enum PowerUpType {
   SpeedBoost = 'SPEED_BOOST',
   Freeze = 'FREEZE',
   ShrinkTerritory = 'SHRINK_TERRITORY',
+  /** Phase through trails (your own and enemies') without dying, briefly. */
+  Ghost = 'GHOST',
+  /** Vacuum up nearby power-up drops for a short window. */
+  Magnet = 'MAGNET',
 }
 
 /** How a match ends. */

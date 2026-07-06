@@ -27,6 +27,7 @@ export interface Profile {
   winRate: number;
   selectedSkin: string;
   missions: MissionProgress[];
+  achievements: string[];
 }
 
 export interface LeaderboardRow {
